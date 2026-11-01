@@ -1,12 +1,6 @@
-/* app.css - layout styles for the starter page.
+/* app.css - layout styles for the Content Lab prototype.
    DS tokens only (var(--ds-*)); no raw colors, spacing or font sizes.
    Class names start with "app-" so they never collide with the DS ("ds-"). */
-
-:root {
-  /* 4 x 64px = 256px, built from a token so no raw value is needed */
-  --app-sidebar-width: calc(var(--ds-space-16) * 4);
-  --app-content-max-width: calc(var(--ds-space-16) * 12);
-}
 
 body {
   margin: 0;
@@ -16,119 +10,830 @@ body {
   line-height: var(--ds-line-height-20);
 }
 
-/* ===== Page layout: header on top, sidebar left, main right ===== */
-.app {
-  display: grid;
-  grid-template-columns: var(--app-sidebar-width) 1fr;
-  grid-template-rows: auto 1fr;
-  grid-template-areas:
-    "header header"
-    "sidebar main";
+/* ===== Initial screen: single entry button centered on the page ===== */
+.app-initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 100vh;
 }
 
-.app-header {
-  grid-area: header;
+/* ===== Prototype-only: side drawer (DS candidate) ===== */
+.app-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ds-z-modal);
+  background: var(--ds-b-60);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--ds-duration-enter) var(--ds-ease-out), visibility var(--ds-duration-enter);
+}
+
+.app-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--ds-z-modal);
+  width: 580px;
+  background: var(--ds-background);
+  transform: translateX(calc(100% + var(--ds-space-16)));
+  visibility: hidden;
+  transition: transform var(--ds-duration-enter) var(--ds-ease-out), visibility var(--ds-duration-enter);
+}
+
+.app-drawer-open .app-drawer-overlay,
+.app-drawer-open .app-drawer-panel {
+  opacity: 1;
+  visibility: visible;
+}
+
+.app-drawer-open .app-drawer-panel {
+  transform: none;
+}
+
+/* Prototype-only: white borderless icon button for dark surfaces (DS candidate) */
+.app-icon-btn-on-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ds-roundness-1);
+  background: transparent;
+  color: var(--ds-w-100);
+  cursor: pointer;
+  transition: background var(--ds-duration-base);
+}
+
+.app-icon-btn-on-dark-sm {
+  width: 24px;
+  height: 24px;
+}
+
+.app-icon-btn-on-dark:hover {
+  background: var(--ds-w-20);
+}
+
+/* White X that sits on the overlay, just left of the panel */
+.app-drawer-close {
+  position: absolute;
+  top: var(--ds-space-4);
+  right: calc(100% + var(--ds-space-4));
+}
+
+.app-drawer-previewing .app-drawer-close {
+  display: none;
+}
+
+.app-drawer-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.app-drawer-body[hidden] {
+  display: none;
+}
+
+/* ===== Content Lab drawer content ===== */
+.app-cl-hero {
+  flex-shrink: 0;
+  height: 300px;
+  background:
+    linear-gradient(180deg, var(--ds-w-40) 0%, var(--ds-background) 100%),
+    linear-gradient(270deg, var(--ds-primary) 0%, var(--ds-screen-green) 100%);
+}
+
+.app-cl-hero img {
+  display: block;
+}
+
+/* DS has no 40px type token or Black weight; built from a spacing token. */
+.app-cl-title {
+  margin: var(--ds-space-8) 0 var(--ds-space-7);
+  font-size: calc(var(--ds-space-2) * 5);
+  font-weight: var(--ds-font-weight-bold);
+  line-height: var(--ds-line-height-solid);
+  text-align: center;
+  color: var(--ds-tone-1);
+}
+
+.app-cl-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-4);
+  padding: 0 var(--ds-space-8);
+}
+
+.app-cl-section-title {
+  margin: 0;
+  font-size: var(--ds-font-size-2);
+  font-weight: var(--ds-font-weight-bold);
+  line-height: var(--ds-line-height-solid);
+  letter-spacing: var(--ds-space-0-25);
+  text-transform: uppercase;
+  color: var(--ds-tone-2);
+}
+
+.app-cl-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ds-space-4);
+}
+
+/* Prototype-only: feature card (DS candidate) */
+.app-cl-card {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--ds-space-4);
-  padding: var(--ds-space-3) var(--ds-space-6);
-  border-bottom: 1px solid var(--ds-tone-5);
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-3);
+  border: 1px solid var(--ds-tone-4);
+  border-radius: var(--ds-roundness-2);
+  background: var(--ds-background);
+  font-family: var(--ds-font-family);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--ds-duration-base);
 }
 
-.app-product {
-  font-size: var(--ds-font-size-6);
-  font-weight: var(--ds-font-weight-bold);
-  line-height: var(--ds-line-height-24);
+.app-cl-card:hover {
+  background: var(--ds-tone-7);
 }
 
-.app-header-spacer {
-  flex: 1;
+.app-cl-card:focus-visible {
+  outline: var(--ds-space-0-5) solid var(--ds-primary);
+  outline-offset: var(--ds-space-0-5);
 }
 
-.app-sidebar {
-  grid-area: sidebar;
-  padding: var(--ds-space-4) var(--ds-space-3);
-  border-right: 1px solid var(--ds-tone-5);
+.app-cl-card-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
-.app-main {
-  grid-area: main;
-  padding: var(--ds-space-8);
-}
-
-.app-content {
-  max-width: var(--app-content-max-width);
-}
-
-/* ===== Sidebar navigation ===== */
-.app-nav {
+.app-cl-card-text {
   display: flex;
   flex-direction: column;
   gap: var(--ds-space-1);
 }
 
-.app-nav-item {
+.app-cl-card-label {
+  font-size: var(--ds-font-size-5);
+  font-weight: var(--ds-font-weight-bold);
+  line-height: var(--ds-line-height-16);
+  color: var(--ds-tone-1);
+}
+
+.app-cl-card-meta {
+  font-size: var(--ds-font-size-3);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-tone-2);
+}
+
+.app-cl-card-badge {
+  position: absolute;
+  top: var(--ds-space-3);
+  right: var(--ds-space-3);
+  width: var(--ds-space-2);
+  height: var(--ds-space-2);
+  border-radius: 50%;
+  background: var(--ds-danger);
+}
+
+/* ===== Drawer sub-view: header, actions, list (Summary & chapters) ===== */
+.app-view-header {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--ds-space-3);
-  padding: var(--ds-space-2) var(--ds-space-3);
-  border-radius: var(--ds-roundness-1);
-  color: var(--ds-tone-2);
+  height: var(--ds-space-16);
+  padding: 0 var(--ds-space-4);
+  flex-shrink: 0;
+}
+
+/* DS has no 24px type token; built from a spacing token. */
+.app-view-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: var(--ds-space-6);
   font-weight: var(--ds-font-weight-bold);
-  text-decoration: none;
+  line-height: var(--ds-line-height-24);
+  color: var(--ds-tone-1);
+  white-space: nowrap;
+}
+
+.app-view-actions {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--ds-space-6) var(--ds-space-4);
+  border-bottom: 1px solid var(--ds-tone-5);
+  flex-shrink: 0;
+}
+
+.app-view-list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--ds-space-4);
+}
+
+.app-view-separator {
+  margin: 0;
+  padding: var(--ds-space-2) 0;
+  font-size: var(--ds-font-size-2);
+  font-weight: var(--ds-font-weight-bold);
+  line-height: var(--ds-line-height-solid);
+  letter-spacing: var(--ds-space-0-25);
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--ds-tone-2);
+}
+
+/* Prototype-only: list item (DS candidate) */
+.app-view-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ds-space-1);
+  width: 100%;
+  padding: var(--ds-space-4);
+  border: none;
+  border-radius: var(--ds-roundness-2);
+  background: var(--ds-tone-7);
+  font-family: var(--ds-font-family);
+  font-weight: var(--ds-font-weight-bold);
+  text-align: left;
+  cursor: pointer;
   transition: background var(--ds-duration-base);
 }
 
-.app-nav-item:hover {
+.app-view-item:hover {
   background: var(--ds-tone-6);
 }
 
-.app-nav-item:focus-visible {
-  outline: var(--ds-space-0-5) solid var(--ds-primary);
-  outline-offset: var(--ds-space-0-5);
+.app-view-item + .app-view-item {
+  margin-top: var(--ds-space-2);
 }
 
-.app-nav-item[aria-current="page"] {
-  background: var(--ds-primary-tint-10);
-  color: var(--ds-primary);
-}
-
-/* ===== Main content ===== */
-.app-page-title {
-  margin: 0 0 var(--ds-space-6);
-  font-size: var(--ds-font-size-6);
-  font-weight: var(--ds-font-weight-bold);
-  line-height: var(--ds-line-height-24);
-}
-
-/* The DS has no card component, so this is prototype-only (DS candidate: Card). */
-.app-card {
-  padding: var(--ds-space-6);
-  background: var(--ds-paper);
-  border: 1px solid var(--ds-tone-5);
-  border-radius: var(--ds-roundness-2);
-}
-
-.app-card-title {
-  margin: 0 0 var(--ds-space-1);
-  font-size: var(--ds-font-size-5);
-  font-weight: var(--ds-font-weight-bold);
-  line-height: var(--ds-line-height-24);
-}
-
-.app-card-text {
-  margin: 0 0 var(--ds-space-6);
+.app-view-item-meta {
+  font-size: var(--ds-font-size-4);
   color: var(--ds-tone-2);
 }
 
-.app-actions {
+.app-view-item-title {
+  font-size: var(--ds-font-size-5);
+  color: var(--ds-tone-1);
+}
+
+.app-cl-disclaimer {
+  margin: auto 0 0;
+  padding: var(--ds-space-8) var(--ds-space-8) var(--ds-space-6);
+  font-size: var(--ds-font-size-2);
+  text-align: center;
+  color: var(--ds-tone-2);
+}
+
+/* ===== Summary preview: fills the space left of the drawer ===== */
+.app-pv {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 580px; /* drawer width */
+  z-index: var(--ds-z-modal);
   display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(var(--ds-space-4));
+  color: var(--ds-w-100);
+}
+
+.app-pv[hidden] {
+  display: none;
+}
+
+.app-pv-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ds-space-6) var(--ds-space-4);
+  border-bottom: 1px solid var(--ds-w-40);
+}
+
+.app-pv-close {
+  position: absolute;
+  left: var(--ds-space-4);
+}
+
+.app-pv-title {
+  margin: 0;
+  font-size: var(--ds-font-size-5);
+  font-weight: var(--ds-font-weight-bold);
+  line-height: var(--ds-line-height-20);
+  color: var(--ds-w-80);
+}
+
+.app-pv-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-4);
+  padding: var(--ds-space-8) var(--ds-space-6);
+  overflow-y: auto;
+}
+
+.app-pv-tiles {
+  display: flex;
+  gap: var(--ds-space-3);
+  margin-bottom: var(--ds-space-8);
+}
+
+/* Prototype-only: dark tile button, icon above label (DS candidate) */
+.app-pv-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-2);
+  min-width: 92px;
+  padding: var(--ds-space-3);
+  border: none;
+  border-radius: var(--ds-roundness-2);
+  background: var(--ds-b-60);
+  color: var(--ds-w-100);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-4);
+  font-weight: var(--ds-font-weight-bold);
+  cursor: pointer;
+}
+
+.app-pv-tile:hover,
+.app-pv-btn-dark:hover {
+  background: var(--ds-b-70);
+}
+
+.app-pv-feedback {
+  display: flex;
+  gap: var(--ds-space-3);
+}
+
+.app-pv-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--ds-space-6);
+  border-top: 1px solid var(--ds-w-40);
+}
+
+/* Prototype-only: dark translucent button (DS candidate) */
+.app-pv-btn-dark {
+  height: 40px;
+  padding: 0 var(--ds-space-4);
+  border: none;
+  border-radius: var(--ds-roundness-1);
+  background: var(--ds-b-60);
+  color: var(--ds-w-100);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-5);
+  font-weight: var(--ds-font-weight-bold);
+  cursor: pointer;
+  transition: background var(--ds-duration-base);
+}
+
+/* ===== Prototype-only: video player with side panel ===== */
+.app-player {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 852px;
+  aspect-ratio: 852 / 477;
+  border-radius: var(--ds-roundness-2);
+  overflow: hidden;
+}
+
+.app-player-still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.app-player-video {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background:
+    linear-gradient(180deg, var(--ds-b-60) 0%, transparent 30%),
+    linear-gradient(0deg, var(--ds-b-70) 0%, transparent 30%);
+}
+
+.app-player-top {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--ds-space-3) var(--ds-space-4);
+}
+
+.app-player-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-2);
+  padding: 0 var(--ds-space-4) var(--ds-space-0-5);
+}
+
+.app-player-seekbar {
+  width: 100%;
+  height: var(--ds-space-2);
+}
+
+.app-player-controls {
+  display: flex;
+  align-items: center;
   gap: var(--ds-space-2);
 }
 
-/* Text inside the modal body */
-.app-modal-text {
+.app-player-spacer {
+  flex: 1;
+}
+
+.app-player-ctrl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ds-roundness-1);
+  background: transparent;
+  cursor: pointer;
+}
+
+.app-player-ctrl-filled {
+  background: var(--ds-b-60);
+}
+
+.app-player-time {
+  font-size: var(--ds-font-size-2);
+  text-shadow: 0 0 var(--ds-space-1) var(--ds-b-70);
+}
+
+/* Side panel ("kitchen sink") */
+.app-sink {
+  position: relative;
+  width: 310px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background: var(--ds-b-60);
+  backdrop-filter: blur(var(--ds-space-2));
+}
+
+.app-sink-header {
+  border-bottom: 1px solid var(--ds-w-20);
+}
+
+.app-sink-top {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-4) var(--ds-space-4) 0;
+}
+
+.app-sink-title {
+  flex: 1;
+  font-size: var(--ds-font-size-5);
+  font-weight: var(--ds-font-weight-bold);
+}
+
+.app-sink-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  padding: 0 var(--ds-space-4) var(--ds-space-3);
+}
+
+.app-sink-chip {
+  height: 24px;
+  padding: 0 var(--ds-space-2);
+  border: none;
+  border-radius: var(--ds-roundness-1);
+  background: var(--ds-b-60);
+  color: var(--ds-w-100);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-3);
+  font-weight: var(--ds-font-weight-bold);
+  cursor: pointer;
+}
+
+.app-sink-summary {
   margin: 0;
-  color: var(--ds-tone-2);
+  padding: var(--ds-space-4);
+  font-size: var(--ds-font-size-4);
+  line-height: var(--ds-line-height-18);
+}
+
+.app-chapter {
+  border-top: 1px solid var(--ds-w-20);
+}
+
+.app-chapter-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-3);
+  width: 100%;
+  padding: var(--ds-space-4);
+  border: none;
+  background: transparent;
+  color: var(--ds-w-100);
+  font-family: var(--ds-font-family);
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-chapter-heading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-0-5);
+}
+
+.app-chapter-eyebrow {
+  display: flex;
+  gap: var(--ds-space-2);
+  font-size: var(--ds-font-size-1);
+  letter-spacing: var(--ds-space-0-25);
+  text-transform: uppercase;
+  color: var(--ds-w-80);
+}
+
+.app-chapter-now {
+  color: var(--ds-w-100);
+}
+
+.app-chapter-title {
+  font-size: var(--ds-font-size-5);
+  font-weight: var(--ds-font-weight-bold);
+  line-height: var(--ds-line-height-21);
+}
+
+.app-chapter-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ds-roundness-1);
+  background: var(--ds-b-60);
+}
+
+.app-chapter-text {
+  margin: 0;
+  padding: 0 var(--ds-space-4) var(--ds-space-4);
+  font-size: var(--ds-font-size-4);
+  line-height: var(--ds-line-height-18);
+}
+
+/* ===== Preview mode: create clips from chapters ===== */
+.app-pv [data-pv-mode][hidden] {
+  display: none;
+}
+
+.app-pv-footer-end {
+  justify-content: flex-end;
+}
+
+.app-pv-btn-dark-md {
+  height: 32px;
+  padding: 0 var(--ds-space-3);
+  font-size: var(--ds-font-size-4);
+}
+
+.app-player-sm {
+  max-width: 548px;
+  aspect-ratio: 548 / 316;
+}
+
+.app-clip-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 676px;
+  margin-top: var(--ds-space-2);
+}
+
+.app-clip-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-4);
+  padding: var(--ds-space-4) var(--ds-space-2);
+  border-radius: var(--ds-roundness-2);
+  font-size: var(--ds-font-size-4);
+  transition: background var(--ds-duration-base);
+}
+
+/* Row of the chapter being played: white at 10% (no DS token for 10%, so mixed from w-100) */
+.app-clip-row-playing {
+  background: color-mix(in srgb, var(--ds-w-100) 10%, transparent);
+}
+
+.app-clip-num {
+  width: var(--ds-space-6);
+  color: var(--ds-w-80);
+}
+
+.app-clip-thumb {
+  width: 80px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: var(--ds-roundness-2);
+  object-fit: cover;
+}
+
+.app-clip-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--ds-font-weight-bold);
+}
+
+.app-clip-views {
+  width: 96px;
+  flex-shrink: 0;
+}
+
+/* ===== Preview mode: trimmer (Prototype-only, DS candidate) ===== */
+.app-pv-main-trim {
+  overflow: hidden;
+  padding-bottom: var(--ds-space-8);
+}
+
+.app-pv-tile-primary {
+  background: var(--ds-primary);
+}
+
+.app-pv-tile-primary:hover {
+  background: var(--ds-primary-darker);
+}
+
+.app-trim-stage {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-player-md {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: 450px;
+  aspect-ratio: 16 / 9;
+}
+
+.app-player-progress {
+  height: var(--ds-space-1);
+  border-radius: var(--ds-roundness-tiny);
+  background: var(--ds-w-40);
+  overflow: hidden;
+}
+
+.app-player-progress span {
+  display: block;
+  height: 100%;
+  background: var(--ds-primary);
+}
+
+.app-trim-tools {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  width: 100%;
+}
+
+.app-trim-time {
+  font-size: var(--ds-font-size-4);
+  line-height: var(--ds-line-height-16);
+  word-spacing: var(--ds-space-1);
+}
+
+.app-trim-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: var(--ds-b-60);
+  color: var(--ds-w-100);
+  cursor: pointer;
+}
+
+/* White borderless text button for dark surfaces */
+.app-text-btn-on-dark {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  height: 32px;
+  padding: 0 var(--ds-space-3);
+  border: none;
+  border-radius: var(--ds-roundness-1);
+  background: transparent;
+  color: var(--ds-w-100);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-4);
+  font-weight: var(--ds-font-weight-bold);
+  cursor: pointer;
+  transition: background var(--ds-duration-base);
+}
+
+.app-text-btn-on-dark:hover {
+  background: var(--ds-w-20);
+}
+
+/* Trimmer: work area (outer box), trim range, two handles, playhead (CTI) */
+.app-trim {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  height: 53px;
+  border: var(--ds-space-0-5) solid var(--ds-w-100);
+  border-radius: var(--ds-roundness-2);
+  box-sizing: border-box;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.app-trim-range {
+  position: absolute;
+  top: calc(var(--ds-space-0-5) * -1);
+  bottom: calc(var(--ds-space-0-5) * -1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--ds-space-0-5) solid var(--ds-w-100);
+  background: var(--ds-b-60);
+  box-sizing: border-box;
+}
+
+.app-trim-len {
+  font-size: var(--ds-font-size-5);
+  font-weight: var(--ds-font-weight-bold);
+  white-space: nowrap;
+}
+
+.app-trim-handle {
+  position: absolute;
+  top: 50%;
+  width: var(--ds-space-3-5);
+  height: var(--ds-space-3-5);
+  border-radius: 50%;
+  background: var(--ds-w-100);
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+}
+
+.app-trim-cti {
+  position: absolute;
+  top: calc(var(--ds-space-2) * -1);
+  bottom: 0;
+  width: var(--ds-space-0-5);
+  background: var(--ds-primary);
+  transform: translateX(-50%);
+  cursor: ew-resize;
+}
+
+.app-trim-cti::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--ds-space-3);
+  height: var(--ds-space-3);
+  border-radius: 50%;
+  background: var(--ds-primary);
+  transform: translate(-50%, -50%);
+}
+
+/* Real Kaltura player inside the summary preview, next to the side panel */
+.app-player-embed {
+  flex: 1;
+  min-width: 0;
+  background: var(--ds-b-100);
 }
