@@ -8,7 +8,7 @@
    Custom events (bubble):
      ds-change        select / tabs / segmented / switch / pagination   detail: { value, label }
      ds-open          modal opened                                       detail: { id }
-     ds-close         modal closed                                       detail: { id, reason }
+     ds-close         modal closed                                       detail: { id, reason: 'button' or 'api' }
      ds-theme-change  fired on document                                  detail: { theme }
    Web component:  <ds-icon name="settings" size="16|24"></ds-icon>  (needs ds-icons.js)
    ============================================ */
@@ -444,8 +444,10 @@
 
   /* ---------- modal ----------
      Open:   DS.openModal('my-modal')   or   <button data-ds-open="my-modal">
-     Close:  DS.closeModal()            or   any element with [data-ds-close] inside the modal
-             (the backdrop and the header close button already have it), or press Escape.
+     Close:  DS.closeModal()            or   any element with [data-ds-close] inside the dialog
+             (the Cancel button, or the optional corner X).
+     Modals are STATIC on purpose: they hold forms and tasks, so clicking the backdrop or
+     pressing Escape never closes them (the user would lose what they typed).
      Focus is trapped inside while open and returned to the opener on close. */
 
   var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
@@ -513,8 +515,10 @@
     }
     var closer = t.closest('[data-ds-close]');
     if (closer) {
+      // the backdrop never closes a modal, even if older markup still has data-ds-close on it
+      if (closer.classList.contains('ds-modal-backdrop')) return;
       var modal = closer.closest('.ds-modal');
-      if (modal) closeModal(modal, closer.classList.contains('ds-modal-backdrop') ? 'backdrop' : 'button');
+      if (modal) closeModal(modal, 'button');
     }
   });
 
@@ -522,12 +526,8 @@
     var top = topModal();
     if (!top) return;
 
-    if (e.key === 'Escape') {
-      if (e.defaultPrevented) return; // an open select inside the modal used this Escape
-      e.preventDefault();
-      closeModal(top.el, 'escape');
-      return;
-    }
+    // Escape intentionally does nothing here. (An open select inside the modal still closes
+    // on Escape: that is handled in the select code above.)
 
     if (e.key === 'Tab') {
       var dialog = top.el.querySelector('.ds-modal-dialog') || top.el;
@@ -562,7 +562,7 @@
   /* ---------- public API ---------- */
 
   window.DS = {
-    version: '1.0.0',
+    version: '1.1.0',
     setTheme: setTheme,
     getTheme: getTheme,
     showToast: showToast,

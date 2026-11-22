@@ -3,7 +3,7 @@
 Read this before writing any UI in a prototype that has a `ds/` folder. It lists every component's exact markup, the JS API, all tokens and all icon names. Everything here is in `ds/styles.css`, `ds/ds.js`, `ds/ds-icons.js`.
 
 <!-- BEGIN GENERATED: version -->
-DS version: **1.0.0**
+DS version: **1.1.0**
 <!-- END GENERATED: version -->
 
 ## Rules
@@ -127,6 +127,7 @@ All defined in `:root` in `styles.css`. `/* dark: x */` marks tokens that change
 --ds-space-6: 24px;
 --ds-space-7: 28px;
 --ds-space-8: 32px;
+--ds-space-10: 40px;
 --ds-space-16: 64px;
 
 /* Typography */
@@ -138,6 +139,7 @@ All defined in `:root` in `styles.css`. `/* dark: x */` marks tokens that change
 --ds-font-size-5: 16px;
 --ds-font-size-6: 18px;
 --ds-font-size-7: 48px;
+--ds-font-size-h3: 24px;
 --ds-font-weight-regular: 400;
 --ds-font-weight-bold: 700;
 --ds-line-height-solid: 1;
@@ -146,6 +148,7 @@ All defined in `:root` in `styles.css`. `/* dark: x */` marks tokens that change
 --ds-line-height-20: 20px;
 --ds-line-height-21: 21px;
 --ds-line-height-24: 24px;
+--ds-line-height-h3: 1.2;
 
 /* Shadows */
 --ds-shadow-menu: 0 0 0 1px var(--ds-b-20), 0 4px 30px -8px var(--ds-b-20);
@@ -173,6 +176,7 @@ All defined in `:root` in `styles.css`. `/* dark: x */` marks tokens that change
 --ds-modal-width-sm: 400px;
 --ds-modal-width-md: 560px;
 --ds-modal-width-lg: 800px;
+--ds-modal-width-xl: 960px;
 ```
 <!-- END GENERATED: tokens -->
 
@@ -195,7 +199,7 @@ arrow-right, bookmark, bullet, business-card, chat, check, chevron-down, chevron
 Sizes and variants are modifier classes on the base class. Disabled = the `disabled` attribute (or `aria-disabled="true"` where noted). Every example below is the exact markup to copy.
 
 ### Button
-Base `ds-btn` + size (`ds-btn-sm` 24px | `-md` 32px | `-lg` 40px | `-xl` 48px) + variant (`ds-btn-primary` | `-secondary` | `-danger`). Optional `ds-btn-borderless` (transparent bg, colored text, tint on hover). Icon-only: add `ds-btn-icon` (square) and give it `aria-label`. States: hover, focus-visible ring, `disabled` / `aria-disabled="true"` (grey, not clickable).
+Base `ds-btn` + size (`ds-btn-sm` 24px | `-md` 32px | `-lg` 40px | `-xl` 48px) + variant (`ds-btn-primary` | `-secondary` | `-danger`). Optional `ds-btn-borderless` (transparent bg, colored text, tint on hover). Icon-only: add `ds-btn-icon` (square) and give it `aria-label`. States: hover, focus-visible ring, `disabled` / `aria-disabled="true"` (outline: empty background, `tone-4` border and text; borderless keeps no border; not clickable).
 ```html
 <button class="ds-btn ds-btn-md ds-btn-primary">Save</button>
 <button class="ds-btn ds-btn-md ds-btn-secondary ds-btn-borderless">Cancel</button>
@@ -396,19 +400,16 @@ Bottom arrow: `<svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d
 Tag/chip close buttons have no built-in behavior. `ds-chip-picture` and `ds-chip-status` are optional; the `.ds-chip-content` wrapper is required. For a disabled tag/chip use the class (`ds-tag-disabled`, `ds-chip-disabled`) or the `disabled` attribute.
 
 ### Modal
-Dismissable dialog. It closes on: a click on the backdrop (the backdrop carries `data-ds-close`), the Escape key, any `[data-ds-close]` element inside it (header X, Cancel button), or `DS.closeModal()`. (Newer DS versions make modals static; this copy is v1.0, where all of these close it.) A Save/Delete button that should also close needs `data-ds-close`.
+Static dialog for forms and tasks. **Clicking the backdrop and pressing Escape do NOT close it** (users would lose what they typed). It closes only through an element with `data-ds-close` inside the dialog (the Cancel button) or `DS.closeModal()`. Do not put `data-ds-close` on the backdrop (it is ignored). Always give the modal a Cancel button with `data-ds-close`; a Save/Delete button that should also close needs `data-ds-close` too.
 
-Structure: `div.ds-modal` + size (`ds-modal-sm` 400px | `-md` 560px | `-lg` 800px; there is no `-xl`) with `id` and the `hidden` attribute (keep it; `ds.js` removes it on open) > `div.ds-modal-backdrop[data-ds-close]` + `div.ds-modal-dialog[role=dialog][aria-modal=true][aria-labelledby]` > `ds-modal-header` (left-aligned 18px `h2.ds-modal-title` + `button.ds-modal-close` X, bottom border), `ds-modal-body` (24px padding; the only part that scrolls), `ds-modal-footer` (top border, buttons right-aligned; no footer-note class). Open with `<button data-ds-open="id">` or `DS.openModal('id')`. Focus is trapped while open, moves to `[autofocus]` or the first focusable element, and returns to the opener on close. The page behind does not scroll. An open select inside a modal closes on Escape first (the modal stays); a second Escape closes the modal.
+Structure: `div.ds-modal` + size (`ds-modal-sm` 400px | `-md` 560px | `-lg` 800px | `-xl` 960px) with `id` and the `hidden` attribute (keep it; `ds.js` removes it on open) > `div.ds-modal-backdrop` + `div.ds-modal-dialog[role=dialog][aria-modal=true][aria-labelledby]` > `ds-modal-header` (centered 24px `h2.ds-modal-title`, no divider), `ds-modal-body` (the only part that scrolls), `ds-modal-footer` (12px vertical padding + top border, so 65px tall with `ds-btn-lg` buttons and 57px with `-md`; buttons right-aligned; optional `span.ds-modal-footer-note` on the left). Use a borderless secondary button for Cancel. Open with `<button data-ds-open="id">` or `DS.openModal('id')`. Focus is trapped while open, moves to `[autofocus]` or the first focusable element, and returns to the opener on close. The page behind does not scroll. An open select inside a modal still closes on Escape (modal stays). Optional corner X: `<button class="ds-modal-close" data-ds-close aria-label="Close"><ds-icon name="clear"></ds-icon></button>` as the last child of `.ds-modal-header`.
 ```html
 <button class="ds-btn ds-btn-md ds-btn-primary" data-ds-open="rename-modal">Rename</button>
 
 <div class="ds-modal ds-modal-md" id="rename-modal" hidden>
-  <div class="ds-modal-backdrop" data-ds-close></div>
+  <div class="ds-modal-backdrop"></div>
   <div class="ds-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="rename-title">
-    <div class="ds-modal-header">
-      <h2 class="ds-modal-title" id="rename-title">Rename document</h2>
-      <button class="ds-modal-close" data-ds-close aria-label="Close"><ds-icon name="clear"></ds-icon></button>
-    </div>
+    <div class="ds-modal-header"><h2 class="ds-modal-title" id="rename-title">Rename document</h2></div>
     <div class="ds-modal-body">
       <div class="ds-form-field">
         <label class="ds-form-label" for="rename-input">Name</label>
@@ -416,13 +417,14 @@ Structure: `div.ds-modal` + size (`ds-modal-sm` 400px | `-md` 560px | `-lg` 800p
       </div>
     </div>
     <div class="ds-modal-footer">
-      <button class="ds-btn ds-btn-md ds-btn-secondary" data-ds-close>Cancel</button>
+      <span class="ds-modal-footer-note">Optional note</span>
+      <button class="ds-btn ds-btn-md ds-btn-secondary ds-btn-borderless" data-ds-close>Cancel</button>
       <button class="ds-btn ds-btn-md ds-btn-primary" data-ds-close>Save</button>
     </div>
   </div>
 </div>
 ```
-Events on the `.ds-modal` element (bubble): `ds-open` `detail: { id }`; `ds-close` `detail: { id, reason }` where `reason` is `'backdrop'` (backdrop click), `'escape'`, `'button'` (another `[data-ds-close]` click) or `'api'` (`DS.closeModal()`). Nested modals stack; `DS.closeModal()` closes the top one.
+Events on the `.ds-modal` element (bubble): `ds-open` `detail: { id }`; `ds-close` `detail: { id, reason }` where `reason` is `'button'` (a `[data-ds-close]` click) or `'api'` (`DS.closeModal()`). Nested modals stack; `DS.closeModal()` closes the top one.
 
 ## Events
 

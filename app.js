@@ -67,6 +67,7 @@
         '<button class="app-pv-btn-dark app-pv-btn-dark-md" data-create-clip="' + i + '">Create clip</button>' +
       '</div>';
     }).join('');
+    if (kClips) updateClipButtons();
   }
 
   // Preview modes: "summary" (player + chapters panel), "clips" (chapter list), "trim" (trimmer)
@@ -82,12 +83,14 @@
       if (kClips) ['timeupdate', 'play', 'pause'].forEach(function (ev) { kClips.addEventListener(ev, updateClipButtons); });
     }
     if (mode !== 'clips' && kClips) kClips.pause();
+    if (mode !== 'clip' && kClip) kClip.pause();
   }
 
   // ----- Kaltura player + thumbnails -----
   var k = data.kaltura;
   var kPlayer = null;  // summary mode
   var kClips = null;   // clips mode
+  var kClip = null;    // single generated clip preview
 
   function makePlayer(targetId) {
     try {
@@ -167,17 +170,18 @@
     document.getElementById('trim-player-time').textContent = time;
   }
 
-  function openTrimmer(i) {
-    var chapters = currentDraft.chapters;
-    var next = chapters[i + 1];
-    trim.offset = toSec(chapters[i].time);
-    trim.chapter = chapters[i];
+  // Trim a generated clip: the work window is its chapter, handles start at the clip range
+  function openClipTrimmer(c) {
+    var chapters = data.summaryDrafts[0].chapters;
+    var next = chapters[c.chapter + 1];
+    trim.offset = toSec(chapters[c.chapter].time);
     trim.work = (next ? toSec(next.time) : k.duration) - trim.offset;
-    trim.start = 0;
-    trim.end = trim.work;
-    trim.cti = 0;
+    trim.start = c.start - trim.offset;
+    trim.end = Math.min(trim.work, trim.start + c.length);
+    trim.cti = trim.start;
+    trim.clip = c;
     updateTrimFrame();
-    document.getElementById('pv-title').textContent = chapters[i].title;
+    document.getElementById('pv-title').textContent = c.title;
     setPreviewMode('trim');
     renderTrim();
   }
@@ -218,6 +222,8 @@
 
   function closePreview() {
     if (kPlayer) kPlayer.pause();
+    if (kClip) kClip.pause();
+    selectClipRow(-1);
     preview.hidden = true;
     drawer.classList.remove('app-drawer-previewing');
   }
@@ -265,7 +271,9 @@
     }
 
     var clip = e.target.closest('[data-create-clip]');
-    if (clip) openTrimmer(Number(clip.getAttribute('data-create-clip')));
+    if (clip) {
+      createClipFromChapter(Number(clip.getAttribute('data-create-clip')));
+    }
 
     // Trim to current time: move the nearer handle to the playhead
     if (e.target.closest('[data-trim-to-cti]')) {
@@ -273,9 +281,14 @@
       moveTo(nearStart ? 'start' : 'end', trim.cti);
     }
 
-    if (e.target.closest('[data-trim-create]')) {
-      DS.showToast({ type: 'success', message: 'Your clip is processing and will be saved in My Media' });
-      setPreviewMode('clips');
+    if (e.target.closest('[data-trim-back]')) openClip(data.generatedClips.indexOf(trim.clip));
+
+    if (e.target.closest('[data-trim-create]') && trim.clip) {
+      trim.clip.start = Math.round(trim.offset + trim.start);
+      trim.clip.length = Math.round(trim.end - trim.start);
+      renderGeneratedClips();
+      openClip(data.generatedClips.indexOf(trim.clip));
+      DS.showToast({ type: 'success', message: 'Clip trimmed to ' + fmt(trim.clip.length) });
     }
 
     // Expand / collapse a chapter (one open at a time)
@@ -289,6 +302,210 @@
       }
     }
   });
+  // ----- Create clips form -----
+  var ccText = document.getElementById('cc-instructions');
+  var ccCounter = document.getElementById('cc-counter');
+  function updateCcCounter() { ccCounter.textContent = ccText.value.length + '/500'; }
+  ccText.addEventListener('input', updateCcCounter);
+  document.addEventListener('click', function (e) {
+    var opt = e.target.closest('.app-cc-option');
+    if (opt) {
+      opt.parentElement.querySelectorAll('.app-cc-option').forEach(function (o) {
+        o.setAttribute('aria-checked', String(o === opt));
+      });
+    }
+    // Reuse prompt: reopen the form filled with the settings these clips were made with
+    var reuse = e.target.closest('[data-cc-reuse]');
+    if (reuse) {
+      applyPrompt(data.generatedClips[Number(reuse.closest('[data-cc-clip]').getAttribute('data-cc-clip'))].prompt);
+      showView('clips-create');
+      ccText.focus();
+    }
+    // Suggested prompt tags append their text to the instructions
+    var prompt = e.target.closest('[data-cc-prompt]');
+    if (prompt) {
+      var text = prompt.textContent.trim();
+      ccText.value = (ccText.value ? ccText.value.replace(/\s*$/, ' ') : '') + text + (text.slice(-1) === ':' ? ' ' : '');
+      ccText.value = ccText.value.slice(0, 500);
+      updateCcCounter();
+      ccText.focus();
+    }
+  });
+  // Submit -> "Creating clips" loading view -> generated clips list.
+  // Once clips exist, the Clips card on the menu opens the list instead of the form.
+  var CLIPS_GENERATE_MS = 5000;
+  var clipsCard = document.querySelector('[data-go-view="clips-create"].app-cl-card');
+
+  // data.generatedClips is the mock AI result; the list starts empty and fills from
+  // the form (AI clips, each remembering its prompt) or from a chapter (no prompt).
+  var aiClips = data.generatedClips;
+  data.generatedClips = [];
+
+  // Once any clip exists, the Clips card opens the list and shows a count
+  function onClipsChanged() {
+    renderGeneratedClips();
+    if (clipsCard.getAttribute('data-go-view') !== 'clips') {
+      clipsCard.setAttribute('data-go-view', 'clips');
+      clipsCard.querySelector('.app-cl-card-text').insertAdjacentHTML('beforeend', '<span class="app-cl-card-meta"></span>');
+      // "Back to clips" on the form now returns to the list
+      document.querySelector('#clips-create-form [data-go-view="menu"]').setAttribute('data-go-view', 'clips');
+    }
+    updateClipsCardCount();
+  }
+
+  document.getElementById('clips-create-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var prompt = readPrompt();
+    showView('clips-loading');
+    setTimeout(function () {
+      var fresh = aiClips.map(function (c) { return Object.assign({}, c, { prompt: prompt }); });
+      data.generatedClips = data.generatedClips.filter(function (c) { return !c.prompt; }).concat(fresh);
+      onClipsChanged();
+      if (!drawer.querySelector('[data-view="clips-loading"]').hidden) showView('clips');
+      DS.showToast({ type: 'success', message: fresh.length + ' clips are ready' });
+    }, CLIPS_GENERATE_MS);
+  });
+
+  // Chapter -> clip: whole chapter becomes a draft clip, then show the Clips list
+  function createClipFromChapter(i) {
+    var chapters = currentDraft.chapters, next = chapters[i + 1];
+    var start = toSec(chapters[i].time);
+    var existing = data.generatedClips.filter(function (c) { return c.fromChapter && c.chapter === i; })[0];
+    if (!existing) {
+      data.generatedClips.unshift({ chapter: i, fromChapter: true, start: start,
+        length: (next ? toSec(next.time) : k.duration) - start, title: chapters[i].title });
+      onClipsChanged();
+      DS.showToast({ type: 'success', message: 'Clip \u201c' + chapters[i].title + '\u201d saved as a draft' });
+    }
+    closePreview();
+    showView('clips');
+  }
+
+  // The prompt (form settings) the clips were generated with, so a clip can reuse it
+  var ccForm = document.getElementById('clips-create-form');
+  var ccLang = ccForm.querySelector('.app-cc-select');
+  function readPrompt() {
+    return {
+      duration: ccForm.querySelector('.app-cc-option[aria-checked="true"]').textContent,
+      instructions: ccText.value.trim(),
+      language: ccLang.querySelector('.ds-select > span').textContent
+    };
+  }
+  function applyPrompt(p) {
+    ccForm.querySelectorAll('.app-cc-option').forEach(function (o) {
+      o.setAttribute('aria-checked', String(o.textContent === p.duration));
+    });
+    ccText.value = p.instructions;
+    updateCcCounter();
+    ccLang.querySelector('.ds-select > span').textContent = p.language;
+    ccLang.querySelectorAll('.ds-select-item').forEach(function (item) {
+      var on = item.textContent.trim() === p.language;
+      item.setAttribute('aria-selected', String(on));
+      var check = item.querySelector('.ds-select-item-trailing');
+      if (on && !check) item.insertAdjacentHTML('beforeend', '<ds-icon class="ds-select-item-trailing" name="check" size="16"></ds-icon>');
+      if (!on && check) check.remove();
+    });
+  }
+  function esc(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+  function reuseButton(p) {
+    var hint = 'Duration: ' + esc(p.duration) + '<br>Topic: ' + (p.instructions ? esc(p.instructions) : 'Top moments');
+    return '<span class="ds-hint-trigger app-cc-reuse">' +
+      '<button class="ds-tag" data-cc-reuse><ds-icon name="refresh" size="16"></ds-icon>Reuse prompt</button>' +
+      '<span class="ds-hint ds-hint-top"><span class="ds-hint-body">' + hint + '</span>' +
+        '<span class="ds-hint-arrow"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M0 0L5.4 7Q7 9 8.6 7L14 0Z" fill="currentColor"/></svg></span></span>' +
+    '</span>';
+  }
+
+  function renderGeneratedClips() {
+    document.getElementById('clips-list').innerHTML = data.generatedClips.map(function (c, i) {
+      return '<div class="app-cc-clip' + (i === selectedClip ? ' app-cc-clip-selected' : '') + '" tabindex="0" role="button" data-cc-clip="' + i + '">' +
+        '<span class="app-cc-clip-player">' +
+          '<img src="' + thumbUrl(c.start + c.length / 2, 400) + '" alt="">' +
+          // Highlight = where the clip sits in the full entry (min width 24px so short clips stay visible)
+          '<span class="app-cc-clip-timeline" title="' + fmt(c.start) + ' – ' + fmt(c.start + c.length) + ' of ' + fmt(k.duration) + '">' +
+            '<span style="left:calc((100% - var(--ds-space-6)) * ' + (c.start / k.duration).toFixed(4) + ');' +
+              'width:max(var(--ds-space-6), ' + (c.length / k.duration * 100).toFixed(2) + '%)"></span></span>' +
+        '</span>' +
+        '<span class="app-cc-clip-text">' +
+          '<span class="app-cc-clip-meta">' + fmt(c.length) + '<span>&bull;</span>' + (c.saved ? 'Saved' : 'Draft') + '</span>' +
+          '<span class="app-cc-clip-title">' + c.title + '</span>' +
+          // Only AI-generated clips have a prompt to reuse; clips made from a chapter don't
+          (c.prompt ? reuseButton(c.prompt) : '') +
+        '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ----- Generated clip preview (left panel) -----
+  var selectedClip = -1;
+  function selectClipRow(i) {
+    selectedClip = i;
+    document.querySelectorAll('[data-cc-clip]').forEach(function (r) {
+      r.classList.toggle('app-cc-clip-selected', Number(r.getAttribute('data-cc-clip')) === i);
+    });
+  }
+  function openClip(i) {
+    var c = data.generatedClips[i];
+    currentDraft = data.summaryDrafts[0];
+    selectClipRow(i);
+    document.getElementById('pv-title').textContent = c.title;
+    setPreviewMode('clip');
+    preview.hidden = false;
+    drawer.classList.add('app-drawer-previewing');
+    var media = { entryId: k.entryId, seekFrom: c.start, clipTo: c.start + c.length };
+    if (!kClip) {
+      try {
+        kClip = KalturaPlayer.setup({ targetId: 'kaltura-player-clip', provider: { partnerId: k.partnerId, uiConfId: k.uiConfId } });
+      } catch (err) { console.error(err.message); return; }
+    }
+    if (kClip.__clip !== c.start + ':' + c.length) {
+      kClip.__clip = c.start + ':' + c.length;
+      var poster = thumbUrl(c.start + c.length / 2, 800);
+      kClip.loadMedia(media);
+      // Cover frame from inside the clip, not the entry's first frame (prototype: paint the player's poster element)
+      var tries = 0, paint = setInterval(function () {
+        var el = document.querySelector('#kaltura-player-clip .playkit-poster');
+        if (el) el.style.backgroundImage = 'url("' + poster + '")';
+        if (++tries > 20) clearInterval(paint);
+      }, 250);
+    }
+  }
+  function updateClipsCardCount() {
+    var meta = clipsCard.querySelector('.app-cl-card-meta');
+    if (meta) meta.textContent = data.generatedClips.length + ' Clips';
+  }
+
+  document.addEventListener('click', function (e) {
+    var row = e.target.closest('[data-cc-clip]');
+    if (row && !e.target.closest('[data-cc-reuse]')) openClip(Number(row.getAttribute('data-cc-clip')));
+
+    if (e.target.closest('[data-clip-trim]')) openClipTrimmer(data.generatedClips[selectedClip]);
+
+    if (e.target.closest('[data-clip-save]')) {
+      var saved = data.generatedClips[selectedClip];
+      saved.saved = true;
+      closePreview();
+      renderGeneratedClips();
+      DS.showToast({ type: 'success', message: 'Clip \u201c' + saved.title + '\u201d saved in My Media' });
+    }
+
+    if (e.target.closest('[data-clip-delete]')) {
+      var gone = data.generatedClips.splice(selectedClip, 1)[0];
+      closePreview();
+      renderGeneratedClips();
+      updateClipsCardCount();
+      DS.showToast({ type: 'success', message: 'Draft \u201c' + gone.title + '\u201d deleted' });
+    }
+  });
+  document.getElementById('clips-list').addEventListener('keydown', function (e) {
+    var row = e.target.closest('[data-cc-clip]');
+    if (row && e.target === row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); }
+  });
+
+  // Loading animation: a grid of dots
+  document.querySelector('.app-cc-dots').innerHTML = new Array(26 * 6 + 1).join('<span></span>');
+
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     if (!preview.hidden) closePreview();

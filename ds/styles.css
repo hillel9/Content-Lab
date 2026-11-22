@@ -97,6 +97,7 @@
   --ds-space-6: 24px;
   --ds-space-7: 28px;
   --ds-space-8: 32px;
+  --ds-space-10: 40px;
   --ds-space-16: 64px;
 
   /* Typography */
@@ -109,6 +110,7 @@
   --ds-font-size-5: 16px;
   --ds-font-size-6: 18px;
   --ds-font-size-7: 48px;
+  --ds-font-size-h3: 24px;
 
   --ds-font-weight-regular: 400;
   --ds-font-weight-bold: 700;
@@ -119,6 +121,7 @@
   --ds-line-height-20: 20px;
   --ds-line-height-21: 21px;
   --ds-line-height-24: 24px;
+  --ds-line-height-h3: 1.2;
 
   /* Shadows */
   --ds-shadow-menu: 0 0 0 1px var(--ds-b-20), 0 4px 30px -8px var(--ds-b-20);
@@ -146,6 +149,7 @@
   --ds-modal-width-sm: 400px;
   --ds-modal-width-md: 560px;
   --ds-modal-width-lg: 800px;
+  --ds-modal-width-xl: 960px;
 }
 
 /* ---- Dark Theme Override ---- */
@@ -215,12 +219,13 @@ html, body {
 .ds-btn-danger { background: var(--ds-danger); color: var(--ds-danger-text-contrast); }
 .ds-btn-danger:hover { background: var(--ds-danger-darker); }
 
-/* Disabled — applied via :disabled pseudo-class for real buttons */
+/* Disabled — applied via :disabled pseudo-class for real buttons.
+   Outline style: empty background, tone-4 border and text. */
 .ds-btn:disabled,
 .ds-btn[aria-disabled="true"] {
-  background: var(--ds-tone-6);
+  background: transparent;
   color: var(--ds-tone-4);
-  border: none;
+  border: 1px solid var(--ds-tone-4);
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -233,6 +238,13 @@ html, body {
 .ds-btn-borderless.ds-btn-secondary:hover { background: var(--ds-tone-5); }
 .ds-btn-borderless.ds-btn-danger { background: transparent; color: var(--ds-danger); }
 .ds-btn-borderless.ds-btn-danger:hover { background: var(--ds-danger-tint-10); }
+/* Borderless disabled: no border, tone-4 text */
+.ds-btn.ds-btn-borderless:disabled,
+.ds-btn.ds-btn-borderless[aria-disabled="true"] {
+  background: transparent;
+  color: var(--ds-tone-4);
+  border: none;
+}
 
 /* Icon-only */
 .ds-btn-icon { min-width: unset; padding: 0; }
@@ -1737,7 +1749,12 @@ ds-icon svg {
 
 /* ============================================
    Modal
+   For forms and tasks, so it is STATIC: clicking the backdrop or pressing Escape does
+   NOT close it (users would lose what they typed). It closes only through an element
+   with [data-ds-close] inside the dialog (a Cancel button), or DS.closeModal().
    Behavior in ds.js: DS.openModal(id) / [data-ds-open="id"] / [data-ds-close]
+
+   Layout: title (fixed) / body (scrolls when tall) / footer (fixed, actions on the right)
    ============================================ */
 .ds-modal {
   position: fixed;
@@ -1767,6 +1784,7 @@ ds-icon svg {
   border-radius: var(--ds-roundness-2);
   box-shadow: var(--ds-shadow-floating);
   outline: none;
+  overflow: hidden;
   animation: ds-modal-in var(--ds-duration-slow) var(--ds-ease-out);
 }
 @keyframes ds-modal-in {
@@ -1781,30 +1799,34 @@ ds-icon svg {
 .ds-modal-sm .ds-modal-dialog { max-width: var(--ds-modal-width-sm); }
 .ds-modal-md .ds-modal-dialog { max-width: var(--ds-modal-width-md); }
 .ds-modal-lg .ds-modal-dialog { max-width: var(--ds-modal-width-lg); }
+.ds-modal-xl .ds-modal-dialog { max-width: var(--ds-modal-width-xl); }
 
-/* Header */
+/* Title (centered, stays put while the body scrolls) */
 .ds-modal-header {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: var(--ds-space-2);
-  padding: var(--ds-space-4) var(--ds-space-4) var(--ds-space-4) var(--ds-space-6);
-  border-bottom: 1px solid var(--ds-tone-6);
+  justify-content: center;
+  padding: var(--ds-space-10) var(--ds-space-10) var(--ds-space-6);
   flex-shrink: 0;
 }
 .ds-modal-title {
-  flex: 1 1 auto;
   margin: 0;
   font-family: var(--ds-font-family);
-  font-size: var(--ds-font-size-6);
+  font-size: var(--ds-font-size-h3);
   font-weight: var(--ds-font-weight-bold);
-  line-height: var(--ds-line-height-24);
+  line-height: var(--ds-line-height-h3);
+  text-align: center;
   color: var(--ds-tone-1);
 }
+
+/* Optional corner close button. Not part of the default design: users cancel with the footer button. */
 .ds-modal-close {
+  position: absolute;
+  top: var(--ds-space-4);
+  right: var(--ds-space-4);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -1823,12 +1845,12 @@ ds-icon svg {
   outline-offset: 2px;
 }
 
-/* Body (scrolls when content is tall) */
+/* Body: the only part that scrolls */
 .ds-modal-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--ds-space-6);
+  padding: 0 var(--ds-space-10) var(--ds-space-6);
   font-family: var(--ds-font-family);
   font-size: var(--ds-font-size-4);
   font-weight: var(--ds-font-weight-regular);
@@ -1836,15 +1858,23 @@ ds-icon svg {
   color: var(--ds-tone-1);
 }
 
-/* Footer (action buttons, right-aligned) */
+/* Footer: optional note on the left, action buttons on the right */
 .ds-modal-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--ds-space-2);
-  padding: var(--ds-space-4) var(--ds-space-6);
-  border-top: 1px solid var(--ds-tone-6);
+  padding: var(--ds-space-3) var(--ds-space-6) var(--ds-space-3) var(--ds-space-10);
+  border-top: 1px solid var(--ds-tone-4);
   flex-shrink: 0;
+}
+.ds-modal-footer-note {
+  margin-right: auto;
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-5);
+  font-weight: var(--ds-font-weight-regular);
+  line-height: var(--ds-line-height-solid);
+  color: var(--ds-tone-2);
 }
 
 /* Page behind the modal does not scroll */

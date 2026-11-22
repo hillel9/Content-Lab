@@ -6,7 +6,8 @@ window.APP_DATA = {
     {
       title: 'Repurpose with AI',
       items: [
-        { label: 'Clips', meta: '12 Clips', icon: 'assets/clips.svg', badge: true },
+        // No clips generated yet, so the card opens the Create clips form
+        { label: 'Clips', icon: 'assets/clips.svg', view: 'clips-create' },
         { label: 'Quiz', meta: '1 Quiz', icon: 'assets/quiz.svg' },
         { label: 'Summary & Chapters', meta: '1 Summary and chapter', icon: 'assets/summary-chapters.svg', view: 'summary' },
         { label: 'Metadata enrichment', icon: 'assets/metadata-enrichment.svg' }
@@ -21,6 +22,17 @@ window.APP_DATA = {
         { label: 'Sign language', icon: 'assets/sign-language.svg' }
       ]
     }
+  ],
+
+  // Clips the AI "generates" from the Create clips form. Same entry as the summary:
+  // one highlight per chapter of summaryDrafts[0] (chapter = index), start = seconds into the entry.
+  generatedClips: [
+    { chapter: 0, start: 300,  length: 38, title: 'Meet the speakers: Kaltura and EY Studio+' },
+    { chapter: 1, start: 612,  length: 46, title: 'Why content abundance stopped working' },
+    { chapter: 2, start: 905,  length: 62, title: 'Breaking content into atomic components' },
+    { chapter: 3, start: 1260, length: 58, title: 'Live demo: the AI publishing agent' },
+    { chapter: 4, start: 1880, length: 41, title: 'Feedback loops over linear plans' },
+    { chapter: 5, start: 2320, length: 52, title: 'Genie turns video into a knowledge base' }
   ],
 
   // Kaltura entry used by the player and thumbnails (public embed; no secrets here).
