@@ -84,6 +84,7 @@
     }
     if (mode !== 'clips' && kClips) kClips.pause();
     if (mode !== 'clip' && kClip) kClip.pause();
+    syncUrl();
   }
 
   // ----- Kaltura player + thumbnails -----
@@ -218,6 +219,7 @@
     preview.hidden = false;
     ensurePlayer();
     drawer.classList.add('app-drawer-previewing');
+    syncUrl();
   }
 
   function closePreview() {
@@ -226,6 +228,7 @@
     selectClipRow(-1);
     preview.hidden = true;
     drawer.classList.remove('app-drawer-previewing');
+    syncUrl();
   }
 
   // ----- Drawer views (menu, summary, ...) -----
@@ -233,6 +236,7 @@
     drawer.querySelectorAll('[data-view]').forEach(function (v) {
       v.hidden = v.getAttribute('data-view') !== name;
     });
+    syncUrl();
   }
 
   // ----- Drawer open / close -----
@@ -241,6 +245,7 @@
     closePreview();
     drawer.classList.toggle('app-drawer-open', open);
     drawer.setAttribute('aria-hidden', String(!open));
+    syncUrl();
   }
 
   document.getElementById('open-content-lab').addEventListener('click', function () { setOpen(true); });
@@ -358,13 +363,19 @@
     var prompt = readPrompt();
     showView('clips-loading');
     setTimeout(function () {
-      var fresh = aiClips.map(function (c) { return Object.assign({}, c, { prompt: prompt }); });
-      data.generatedClips = data.generatedClips.filter(function (c) { return !c.prompt; }).concat(fresh);
-      onClipsChanged();
+      var fresh = generateClips(prompt);
       if (!drawer.querySelector('[data-view="clips-loading"]').hidden) showView('clips');
       DS.showToast({ type: 'success', message: fresh.length + ' clips are ready' });
     }, CLIPS_GENERATE_MS);
   });
+
+  // The AI result: one clip per chapter, each remembering the prompt. Replaces earlier AI clips, keeps chapter clips.
+  function generateClips(prompt) {
+    var fresh = aiClips.map(function (c) { return Object.assign({}, c, { prompt: prompt }); });
+    data.generatedClips = data.generatedClips.filter(function (c) { return !c.prompt; }).concat(fresh);
+    onClipsChanged();
+    return fresh;
+  }
 
   // Chapter -> clip: whole chapter becomes a draft clip, then show the Clips list
   function createClipFromChapter(i) {
@@ -453,6 +464,7 @@
     setPreviewMode('clip');
     preview.hidden = false;
     drawer.classList.add('app-drawer-previewing');
+    syncUrl();
     var media = { entryId: k.entryId, seekFrom: c.start, clipTo: c.start + c.length };
     if (!kClip) {
       try {
@@ -511,4 +523,51 @@
     if (!preview.hidden) closePreview();
     else setOpen(false);
   });
+
+  // ===== Prototype-only: page in the URL, so each screen can be opened directly =====
+  // ?page=menu | clips-create | clips-loading | clips | clip&clip=N | trim&clip=N | summary | chapters
+  // No param = the page with Content Lab closed. Clip numbers start at 1.
+  var urlReady = false, urlTimer = null;
+  function currentPage() {
+    if (!drawer.classList.contains('app-drawer-open')) return null;
+    var main = preview.hidden ? null : preview.querySelector('.app-pv-main:not([hidden])');
+    var mode = main && main.getAttribute('data-pv-mode');
+    if (mode === 'summary') return { page: 'summary' };
+    if (mode === 'clips') return { page: 'chapters' };
+    if (mode === 'clip') return { page: 'clip', clip: selectedClip + 1 };
+    if (mode === 'trim') return { page: 'trim', clip: data.generatedClips.indexOf(trim.clip) + 1 };
+    var view = drawer.querySelector('[data-view]:not([hidden])');
+    return { page: view ? view.getAttribute('data-view') : 'menu' };
+  }
+  function syncUrl() {
+    if (!urlReady) return;
+    clearTimeout(urlTimer);  // wait for the whole click to settle, then write the URL once
+    urlTimer = setTimeout(function () {
+      var p = currentPage(), q = new URLSearchParams();
+      if (p) { q.set('page', p.page); if (p.clip) q.set('clip', p.clip); }
+      var url = location.pathname + (p ? '?' + q.toString() : '');
+      try { history.replaceState(null, '', url); } catch (err) { /* some browsers block this on file:// */ }
+    }, 0);
+  }
+  function applyUrl() {
+    var q = new URLSearchParams(location.search), page = q.get('page');
+    var n = Math.max(0, (Number(q.get('clip')) || 1) - 1);
+    if (!page) return;
+    setOpen(true);
+    // Pages that need clips get the AI result straight away, with the form's default prompt
+    if (/^(clips|clip|trim)$/.test(page) && !data.generatedClips.length) generateClips(readPrompt());
+    n = Math.min(n, data.generatedClips.length - 1);
+    if (page === 'clips-create' || page === 'clips') showView(page);
+    else if (page === 'clips-loading') { showView('clips-create'); ccForm.requestSubmit(); }
+    else if (page === 'summary' || page === 'chapters') {
+      showView('summary'); openPreview(0);
+      if (page === 'chapters') setPreviewMode('clips');
+    } else if (page === 'clip' || page === 'trim') {
+      showView('clips'); openClip(n);
+      if (page === 'trim') openClipTrimmer(data.generatedClips[n]);
+    }
+  }
+  applyUrl();
+  urlReady = true;
+  syncUrl();
 })();
