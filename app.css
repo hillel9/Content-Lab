@@ -673,6 +673,25 @@ body {
   flex-shrink: 0;
 }
 
+/* ===== Prototype-only: clip processing status (DS candidate: inline spinner) ===== */
+.app-clip-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  height: 32px;
+  color: var(--ds-w-80);
+  font-weight: var(--ds-font-weight-bold);
+  white-space: nowrap;
+}
+
+.app-spin {
+  animation: app-spin var(--ds-duration-spin) linear infinite;
+}
+
+@keyframes app-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ===== Preview mode: trimmer (Prototype-only, DS candidate) ===== */
 .app-pv-main-trim {
   overflow: hidden;

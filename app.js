@@ -64,7 +64,9 @@
         '<img class="app-clip-thumb" src="' + thumbUrl(toSec(c.time) + 5, 160) + '" alt="">' +
         '<span class="app-clip-name">' + c.title + '</span>' +
         '<span class="app-clip-views">' + c.views + ' Views</span>' +
-        '<button class="app-pv-btn-dark app-pv-btn-dark-md" data-create-clip="' + i + '">Create clip</button>' +
+        (c.processing
+          ? '<span class="app-clip-status" role="status"><ds-icon class="app-spin" name="general-spinner" size="16"></ds-icon>Processing…</span>'
+          : '<button class="app-pv-btn-dark app-pv-btn-dark-md" data-create-clip="' + i + '">Create clip</button>') +
       '</div>';
     }).join('');
     if (kClips) updateClipButtons();
@@ -377,19 +379,33 @@
     return fresh;
   }
 
-  // Chapter -> clip: whole chapter becomes a draft clip, then show the Clips list
+  // Chapter -> clip: the row shows Processing, then the whole chapter becomes a draft clip
+  // and the Clips list opens with that clip in the preview panel.
+  var CLIP_PROCESS_MS = 2500;
   function createClipFromChapter(i) {
-    var chapters = currentDraft.chapters, next = chapters[i + 1];
-    var start = toSec(chapters[i].time);
+    var draft = currentDraft, ch = draft.chapters[i], next = draft.chapters[i + 1];
     var existing = data.generatedClips.filter(function (c) { return c.fromChapter && c.chapter === i; })[0];
-    if (!existing) {
-      data.generatedClips.unshift({ chapter: i, fromChapter: true, start: start,
-        length: (next ? toSec(next.time) : k.duration) - start, title: chapters[i].title });
+    if (existing) return showCreatedClip(existing);
+    if (ch.processing) return;
+    ch.processing = true;
+    renderClipList(draft);
+    setTimeout(function () {
+      ch.processing = false;
+      renderClipList(draft);
+      var start = toSec(ch.time);
+      var clip = { chapter: i, fromChapter: true, start: start,
+        length: (next ? toSec(next.time) : k.duration) - start, title: ch.title };
+      data.generatedClips.unshift(clip);
       onClipsChanged();
-      DS.showToast({ type: 'success', message: 'Clip \u201c' + chapters[i].title + '\u201d saved as a draft' });
-    }
-    closePreview();
+      DS.showToast({ type: 'success', message: 'Clip \u201c' + ch.title + '\u201d saved as a draft' });
+      // Only jump if the user is still on the chapter list
+      var main = preview.hidden ? null : preview.querySelector('.app-pv-main:not([hidden])');
+      if (main && main.getAttribute('data-pv-mode') === 'clips') showCreatedClip(clip);
+    }, CLIP_PROCESS_MS);
+  }
+  function showCreatedClip(clip) {
     showView('clips');
+    openClip(data.generatedClips.indexOf(clip));
   }
 
   // The prompt (form settings) the clips were generated with, so a clip can reuse it
