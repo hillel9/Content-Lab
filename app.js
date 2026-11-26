@@ -655,4 +655,133 @@
   applyUrl();
   urlReady = true;
   syncUrl();
+  // ===== Prototype-only: states palette (Cmd/Ctrl+K) =====
+  // Same behavior as the lxp-roleplay-mvp prototype: lists the states of the screen on show; pick one to jump into it.
+  // Arrows + Enter, or click; Esc closes. Search matches the state name first, then the line beside it.
+  var sp = document.createElement('div');
+  sp.className = 'app-sp-overlay';
+  sp.hidden = true;
+  sp.innerHTML = '<div class="app-sp" role="dialog" aria-modal="true" aria-label="Screen states">' +
+    '<input class="app-sp-search" id="sp-search" type="text" placeholder="Search states" aria-label="Search states" autocomplete="off">' +
+    '<p class="app-sp-head" id="sp-head"></p><ul class="app-sp-list" id="sp-list" role="listbox"></ul>' +
+    '<div class="app-sp-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> to move</span><span><kbd>Enter</kbd> to apply</span><span><kbd>Esc</kbd> to close</span></div></div>';
+  document.body.appendChild(sp);
+  var spSearch = document.getElementById('sp-search'), spList = document.getElementById('sp-list');
+
+  function realClips() { return data.generatedClips.filter(function (c) { return !c.pending; }); }
+  function ensureClips() { if (!realClips().length) generateClips(readPrompt()); }
+  // Back to "no clips yet": the Clips card opens the form again
+  function resetClips() {
+    closePreview();
+    data.generatedClips = [];
+    renderGeneratedClips();
+    clipsCard.setAttribute('data-go-view', 'clips-create');
+    var meta = clipsCard.querySelector('.app-cl-card-meta');
+    if (meta) meta.remove();
+    var back = document.querySelector('#clips-create-form [data-go-view="clips"]');
+    if (back) back.setAttribute('data-go-view', 'menu');
+  }
+  function openClipAs(state) {
+    setOpen(true);
+    ensureClips();
+    showView('clips');
+    if (state === 'unsaved') {
+      // A clip made from chapter 2, not yet saved (stays out of the list)
+      var ch = data.summaryDrafts[0].chapters, start = toSec(ch[1].time);
+      data.generatedClips.unshift({ chapter: 1, fromChapter: true, pending: true, start: start,
+        length: toSec(ch[2].time) - start, title: ch[1].title });
+      return openClip(0);
+    }
+    var c = data.generatedClips.filter(function (x) { return x.prompt; })[0] || realClips()[0];
+    c.saved = state === 'processing' || state === 'ready';
+    c.processing = state === 'processing';
+    renderGeneratedClips();
+    openClip(data.generatedClips.indexOf(c));
+    if (state === 'trim') openClipTrimmer(c);
+  }
+  function openSummaryAs(state) {
+    setOpen(true);
+    showView('summary');
+    openPreview(0);
+    if (state !== 'summary') setPreviewMode('clips');
+    if (state === 'processing') createClipFromChapter(1);
+  }
+
+  function screenStates() {
+    var p = currentPage(), list = function (name, rows, at, go) {
+      return { name: name, items: rows.map(function (r) { return { v: r[0], t: r[1], sub: r[2], on: r[0] === at, go: function () { go(r[0]); } }; }) };
+    };
+    if (!p) return list('Page', [['closed', 'Content Lab closed', 'The entry page'], ['menu', 'Content Lab menu', 'Drawer open']], 'closed',
+      function (v) { if (v === 'menu') setOpen(true); });
+    if (p.page === 'menu') return list('Content Lab menu', [
+      ['none', 'No clips yet', 'Clips opens the Create clips form'], ['some', 'With clips', 'Clips shows the count and opens the list']],
+      realClips().length ? 'some' : 'none', function (v) { if (v === 'none') resetClips(); else ensureClips(); showView('menu'); });
+    if (/^clips/.test(p.page)) return list('Clips', [
+      ['clips-create', 'Create clips form', 'Duration, instructions, language'], ['clips-loading', 'Creating clips', 'Loading after Generate'],
+      ['clips', 'Clips list', 'Generated clips']],
+      p.page, function (v) {
+        closePreview();
+        if (v === 'clips') { ensureClips(); showView('clips'); }
+        else { showView('clips-create'); if (v === 'clips-loading') ccForm.requestSubmit(); }
+      });
+    if (p.page === 'clip' || p.page === 'trim') {
+      var c = data.generatedClips[selectedClip] || {};
+      var at = p.page === 'trim' ? 'trim' : c.pending ? 'unsaved' : c.saved ? (c.processing ? 'processing' : 'ready') : 'draft';
+      return list('Clip preview', [
+        ['draft', 'Draft', 'AI clip: trim, edit details, save'], ['unsaved', 'Unsaved chapter clip', 'From a chapter, not in the list'],
+        ['processing', 'Saved, processing', 'Right after Save'], ['ready', 'Saved, ready', 'All clip options available'],
+        ['trim', 'Trim manually', 'Trimmer on a draft']], at, openClipAs);
+    }
+    if (p.page === 'summary' || p.page === 'chapters') {
+      var busy = currentDraft && currentDraft.chapters.some(function (x) { return x.processing; });
+      return list('Summary & chapters', [
+        ['summary', 'Summary', 'Player with the chapters panel'], ['chapters', 'Create clips from chapters', 'Chapter list'],
+        ['processing', 'Creating a clip', 'Create clip button processing']],
+        p.page === 'summary' ? 'summary' : busy ? 'processing' : 'chapters', openSummaryAs);
+    }
+    return { name: 'This screen', items: [] };
+  }
+
+  var spItems = [], spSel = 0;
+  function spRender() {
+    var st = screenStates(), q = spSearch.value.trim().toLowerCase();
+    var hit = function (x, k) { return x[k].toLowerCase().indexOf(q) >= 0; };
+    spItems = !q ? st.items : st.items.filter(function (x) { return hit(x, 't'); })
+      .concat(st.items.filter(function (x) { return !hit(x, 't') && hit(x, 'sub'); }));
+    spSel = Math.min(spSel, Math.max(0, spItems.length - 1));
+    document.getElementById('sp-head').textContent = 'States · ' + st.name;
+    spList.innerHTML = spItems.length ? spItems.map(function (x, k) {
+      return '<li><button class="app-sp-item' + (x.on ? ' app-sp-on' : '') + (k === spSel ? ' app-sp-sel' : '') + '" type="button" role="option" aria-selected="' + (k === spSel) + '" data-k="' + k + '">' +
+        '<ds-icon name="check" size="16" aria-label="' + (x.on ? 'Current' : '') + '"></ds-icon><b>' + x.t + '</b><span>' + x.sub + '</span></button></li>';
+    }).join('') : '<li class="app-sp-none">' + (st.items.length ? 'No matching states.' : 'No states for this screen.') + '</li>';
+  }
+  function spOpen() {
+    spSearch.value = '';
+    spSel = Math.max(0, screenStates().items.findIndex(function (x) { return x.on; }));
+    sp.hidden = false;
+    spRender();
+    spSearch.focus();
+  }
+  function spClose() { sp.hidden = true; }
+  function spApply(k) { var x = spItems[k]; if (!x) return; spClose(); x.go(); }
+  spSearch.addEventListener('input', function () { spSel = 0; spRender(); });
+  spList.addEventListener('click', function (e) { var b = e.target.closest('[data-k]'); if (b) spApply(Number(b.getAttribute('data-k'))); });
+  spList.addEventListener('mousemove', function (e) {
+    var b = e.target.closest('[data-k]');
+    if (b && Number(b.getAttribute('data-k')) !== spSel) { spSel = Number(b.getAttribute('data-k')); spRender(); }
+  });
+  sp.addEventListener('mousedown', function (e) { if (e.target === sp) spClose(); });
+  // Capture phase: while it's open, its keys never reach the page's own shortcuts (Esc closing the preview, ...)
+  addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.code === 'KeyK') {
+      e.preventDefault(); e.stopImmediatePropagation(); if (sp.hidden) spOpen(); else spClose(); return;
+    }
+    if (sp.hidden) return;
+    e.stopImmediatePropagation();
+    if (e.key === 'Escape') { e.preventDefault(); spClose(); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (spItems.length) { spSel = (spSel + (e.key === 'ArrowDown' ? 1 : spItems.length - 1)) % spItems.length; spRender(); }
+    } else if (e.key === 'Enter') { e.preventDefault(); spApply(spSel); }
+  }, true);
 })();

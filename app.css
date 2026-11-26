@@ -1286,3 +1286,85 @@ body {
   gap: var(--ds-space-1);
   white-space: nowrap;
 }
+
+/* ===== Prototype-only: states palette, Cmd/Ctrl+K (DS candidate: command palette) =====
+   Same behavior as the lxp-roleplay-mvp prototype: lists the states of the screen on show, pick one to jump into it. */
+.app-sp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--ds-z-toast) + 1);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 14vh;
+  background: var(--ds-b-20);
+}
+.app-sp-overlay[hidden] { display: none; }
+.app-sp {
+  width: 520px;
+  max-width: calc(100vw - var(--ds-space-8));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ds-elevated);
+  border-radius: var(--ds-roundness-3);
+  box-shadow: var(--ds-shadow-floating);
+  font-family: var(--ds-font-family);
+  color: var(--ds-tone-1);
+}
+.app-sp-search {
+  padding: var(--ds-space-4) var(--ds-space-5);
+  border: none;
+  border-bottom: 1px solid var(--ds-tone-6);
+  outline: none;
+  background: none;
+  font-family: inherit;
+  font-size: var(--ds-font-size-5);
+  color: var(--ds-tone-1);
+}
+.app-sp-search::placeholder { color: var(--ds-tone-3); }
+.app-sp-head {
+  margin: 0;
+  padding: var(--ds-space-3) var(--ds-space-5) var(--ds-space-1);
+  font-size: var(--ds-font-size-3);
+  font-weight: var(--ds-font-weight-bold);
+  text-transform: uppercase;
+  color: var(--ds-tone-2);
+}
+.app-sp-list { margin: 0; padding: var(--ds-space-1) var(--ds-space-2) var(--ds-space-2); list-style: none; overflow-y: auto; }
+.app-sp-item {
+  width: 100%;
+  padding: var(--ds-space-2-5) var(--ds-space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  border: none;
+  border-radius: var(--ds-roundness-2);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: var(--ds-tone-1);
+}
+.app-sp-item.app-sp-sel { background: var(--ds-primary-tint-10); }
+.app-sp-item ds-icon { flex-shrink: 0; color: var(--ds-success); }
+.app-sp-item:not(.app-sp-on) ds-icon { visibility: hidden; }
+.app-sp-item b { flex: 1; min-width: 0; font-size: var(--ds-font-size-5); font-weight: var(--ds-font-weight-regular); }
+.app-sp-item span { font-size: var(--ds-font-size-4); color: var(--ds-tone-2); }
+.app-sp-none { padding: var(--ds-space-4) var(--ds-space-5) var(--ds-space-5); font-size: var(--ds-font-size-5); color: var(--ds-tone-2); }
+.app-sp-foot {
+  padding: var(--ds-space-2-5) var(--ds-space-5);
+  border-top: 1px solid var(--ds-tone-6);
+  display: flex;
+  gap: var(--ds-space-4);
+  font-size: var(--ds-font-size-3);
+  color: var(--ds-tone-2);
+}
+.app-sp-foot kbd {
+  padding: 0 var(--ds-space-1);
+  border: 1px solid var(--ds-tone-5);
+  border-radius: var(--ds-roundness-1);
+  font-family: inherit;
+  font-size: var(--ds-font-size-2);
+}
