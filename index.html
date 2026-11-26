@@ -88,6 +88,15 @@
         <div class="app-player app-player-clip">
           <!-- Third Kaltura player, plays only the clip range (seekFrom / clipTo) -->
           <div class="app-player-embed" id="kaltura-player-clip"></div>
+          <div class="app-sv-processing">Processing your video</div>
+        </div>
+        <!-- Saved clip: status + clip options (replaces the draft tools) -->
+        <div class="app-sv-options">
+          <p class="app-sv-status"><span class="ds-spinner ds-spinner-white" aria-hidden="true"></span>Your video will be fully ready soon</p>
+          <p class="app-sv-label">Clip options</p>
+          <button class="app-sv-option"><ds-icon name="share"></ds-icon>Share &amp; Embed</button>
+          <button class="app-sv-option app-sv-option-download"><ds-icon name="download"></ds-icon>Download</button>
+          <button class="app-sv-option"><ds-icon name="external-link"></ds-icon>Go to entry</button>
         </div>
         <div class="app-pv-feedback">
           <button class="app-icon-btn-on-dark" aria-label="Like"><ds-icon name="like-hollow"></ds-icon></button>
@@ -252,6 +261,49 @@
           <p class="app-view-separator">Drafts</p>
           <div id="summary-list"></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save clip modal: "Preparing your video" step, then the details form -->
+  <div class="ds-modal ds-modal-md" id="save-clip-modal" hidden>
+    <div class="ds-modal-backdrop"></div>
+    <div class="ds-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="save-clip-title">
+      <div class="ds-modal-header">
+        <h2 class="ds-modal-title" id="save-clip-title">Save a single video</h2>
+        <button class="ds-modal-close" data-ds-close aria-label="Close"><ds-icon name="clear"></ds-icon></button>
+      </div>
+      <div class="ds-modal-body">
+        <div class="app-sc-preparing" data-sc-step="preparing">
+          <div class="app-sc-dots" aria-hidden="true"></div>
+          <p class="app-sc-preparing-text">Preparing your video</p>
+        </div>
+        <div data-sc-step="form" hidden>
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="sc-title">Title</label>
+            <input class="ds-input ds-input-md" id="sc-title">
+          </div>
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="sc-desc">Description (optional)</label>
+            <textarea class="ds-textarea" id="sc-desc"></textarea>
+          </div>
+          <div class="ds-form-field">
+            <label class="ds-form-label">Tags (optional)</label>
+            <div class="app-sc-tags" id="sc-tags"></div>
+          </div>
+          <div class="ds-form-field">
+            <label class="ds-form-label">Options</label>
+            <label class="ds-checkbox">
+              <input type="checkbox" class="ds-checkbox-input" id="sc-burn-captions">
+              <span class="ds-checkbox-indicator"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <span class="ds-checkbox-label">Burn captions</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="ds-modal-footer">
+        <button class="ds-btn ds-btn-md ds-btn-secondary ds-btn-borderless" data-ds-close>Cancel</button>
+        <button class="ds-btn ds-btn-md ds-btn-primary" id="sc-save" disabled>Save</button>
       </div>
     </div>
   </div>

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Content Lab</title>
+  <link rel="stylesheet" href="../ds/styles.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <!-- Figma: Content Lab / Initial (node 17042:14417) -->
+  <main class="app-initial">
+    <button class="ds-btn ds-btn-md ds-btn-primary" id="open-content-lab">
+      <ds-icon name="gen-ai" size="24"></ds-icon>
+      Content lab
+    </button>
+  </main>
+
+  <!-- Content Lab drawer (Figma node 17050:14827) -->
+  <div class="app-drawer" id="content-lab-drawer" aria-hidden="true">
+    <div class="app-drawer-overlay" data-drawer-close></div>
+
+    <!-- Summary preview, fills the space left of the drawer (Figma node 2817:7813) -->
+    <section class="app-pv" id="summary-preview" aria-labelledby="pv-title" hidden>
+      <header class="app-pv-header">
+        <button class="app-icon-btn-on-dark app-pv-close" data-pv-mode="summary" data-preview-close aria-label="Close preview"><ds-icon name="clear"></ds-icon></button>
+        <button class="app-icon-btn-on-dark app-pv-close" data-pv-mode="clips" data-pv-go="summary" aria-label="Back" hidden><ds-icon name="chevron-left"></ds-icon></button>
+        <button class="app-icon-btn-on-dark app-pv-close" data-pv-mode="clip" data-preview-close aria-label="Close preview" hidden><ds-icon name="clear"></ds-icon></button>
+        <button class="app-icon-btn-on-dark app-pv-close" data-pv-mode="trim" data-trim-back aria-label="Back" hidden><ds-icon name="chevron-left"></ds-icon></button>
+        <h2 class="app-pv-title" id="pv-title"></h2>
+      </header>
+
+      <!-- Mode: trim a clip, opened from the clip preview's Trim manually (reference: Figma node 658:3373) -->
+      <div class="app-pv-main app-pv-main-trim" data-pv-mode="trim" hidden>
+        <div class="app-pv-tiles">
+          <button class="app-pv-tile" data-trim-back><ds-icon name="clear"></ds-icon>Cancel</button>
+          <button class="app-pv-tile app-pv-tile-primary" data-trim-create><ds-icon name="check"></ds-icon>Create clip</button>
+        </div>
+
+        <div class="app-trim-stage">
+          <div class="app-player app-player-md">
+            <img class="app-player-still" id="trim-still" src="assets/video-still.jpg" alt="">
+            <div class="app-player-video">
+              <div></div>
+              <div class="app-player-bottom">
+                <div class="app-player-progress"><span id="trim-progress"></span></div>
+                <div class="app-player-controls">
+                  <button class="app-player-ctrl" aria-label="Pause"><img src="assets/player-pause.svg" alt="" width="32" height="32"></button>
+                  <span class="app-player-time" id="trim-player-time"></span>
+                  <span class="app-player-spacer"></span>
+                  <button class="app-player-ctrl" aria-label="Volume"><img src="assets/player-volume.svg" alt="" width="35.1" height="32"></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="app-trim-tools">
+          <span class="app-trim-time" id="trim-time"></span>
+          <button class="app-trim-play" aria-label="Play"><ds-icon name="play"></ds-icon></button>
+          <button class="app-text-btn-on-dark" data-trim-to-cti><ds-icon name="trim"></ds-icon>Trim to current time</button>
+        </div>
+
+        <div class="app-trim" id="trimmer">
+          <div class="app-trim-range" id="trim-range"><span class="app-trim-len" id="trim-len"></span></div>
+          <span class="app-trim-handle" data-trim="start" role="slider" aria-label="Clip start"></span>
+          <span class="app-trim-handle" data-trim="end" role="slider" aria-label="Clip end"></span>
+          <span class="app-trim-cti" data-trim="cti" aria-label="Current time"></span>
+        </div>
+      </div>
+
+      <!-- Mode: create clips from chapters (Figma node 17052:26744) -->
+      <div class="app-pv-main" data-pv-mode="clips" hidden>
+        <div class="app-player app-player-sm">
+          <!-- Second real Kaltura player, set up by app.js when this mode opens -->
+          <div class="app-player-embed" id="kaltura-player-clips"></div>
+        </div>
+        <div class="app-clip-list" id="pv-clip-list"></div>
+      </div>
+
+
+      <!-- Mode: preview a generated clip (Figma node 7723:19908) -->
+      <div class="app-pv-main" data-pv-mode="clip" hidden>
+        <div class="app-pv-tiles">
+          <button class="app-pv-tile" data-clip-trim><ds-icon name="trim"></ds-icon>Trim manually</button>
+          <button class="app-pv-tile" data-clip-edit><ds-icon name="edit"></ds-icon>Edit details</button>
+        </div>
+        <div class="app-player app-player-clip">
+          <!-- Third Kaltura player, plays only the clip range (seekFrom / clipTo) -->
+          <div class="app-player-embed" id="kaltura-player-clip"></div>
+          <div class="app-sv-processing">Processing your video</div>
+        </div>
+        <!-- Saved clip: status + clip options (replaces the draft tools) -->
+        <div class="app-sv-options">
+          <p class="app-sv-status"><span class="ds-spinner ds-spinner-white" aria-hidden="true"></span>Your video will be fully ready soon</p>
+          <p class="app-sv-label">Clip options</p>
+          <button class="app-sv-option"><ds-icon name="share"></ds-icon>Share &amp; Embed</button>
+          <button class="app-sv-option app-sv-option-download"><ds-icon name="download"></ds-icon>Download</button>
+          <button class="app-sv-option app-sv-option-vertical" data-clip-ratio><span class="app-sv-ratio-idle"><ds-icon name="mobile"></ds-icon>Change ratio with AI</span><span class="app-sv-ratio-busy"><span class="ds-spinner ds-spinner-white" aria-hidden="true"></span>Changing ratio…</span></button>
+          <button class="app-sv-option"><ds-icon name="external-link"></ds-icon>Go to entry</button>
+        </div>
+        <div class="app-pv-feedback">
+          <button class="app-icon-btn-on-dark" aria-label="Like"><ds-icon name="like-hollow"></ds-icon></button>
+          <button class="app-icon-btn-on-dark" aria-label="Dislike"><ds-icon name="dislike-hollow"></ds-icon></button>
+        </div>
+      </div>
+
+      <!-- Mode: summary preview -->
+      <div class="app-pv-main" data-pv-mode="summary">
+        <div class="app-pv-tiles">
+          <button class="app-pv-tile"><ds-icon name="edit"></ds-icon>Edit summary</button>
+          <button class="app-pv-tile" data-pv-go="clips"><ds-icon name="clips"></ds-icon>Create clips</button>
+        </div>
+
+        <div class="app-player">
+          <!-- Real Kaltura player, set up by app.js on first open -->
+          <div class="app-player-embed" id="kaltura-player"></div>
+
+          <aside class="app-sink">
+            <div class="app-sink-header">
+              <div class="app-sink-top">
+                <span class="app-sink-title">Summary &amp; chapters</span>
+                <button class="app-icon-btn-on-dark" aria-label="Close"><ds-icon name="clear"></ds-icon></button>
+              </div>
+              <div class="app-sink-actions">
+                <button class="app-sink-chip">Read as overview</button>
+                <button class="app-icon-btn-on-dark app-icon-btn-on-dark-sm" aria-label="Copy"><ds-icon name="copy" size="16"></ds-icon></button>
+              </div>
+            </div>
+            <p class="app-sink-summary" id="pv-summary"></p>
+            <div id="pv-chapters"></div>
+          </aside>
+        </div>
+
+        <div class="app-pv-feedback">
+          <button class="app-icon-btn-on-dark" aria-label="Like"><ds-icon name="like-hollow"></ds-icon></button>
+          <button class="app-icon-btn-on-dark" aria-label="Dislike"><ds-icon name="dislike-hollow"></ds-icon></button>
+        </div>
+      </div>
+
+      <footer class="app-pv-footer" data-pv-mode="summary">
+        <button class="app-pv-btn-dark">Delete draft</button>
+        <button class="ds-btn ds-btn-lg ds-btn-primary">Publish to media</button>
+      </footer>
+      <footer class="app-pv-footer" data-pv-mode="clip" hidden>
+        <button class="app-pv-btn-dark" data-clip-delete>Delete draft</button>
+        <button class="ds-btn ds-btn-lg ds-btn-primary app-pv-save" data-clip-save>Save</button>
+      </footer>
+    </section>
+
+    <div class="app-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="content-lab-title">
+      <button class="app-icon-btn-on-dark app-drawer-close" data-drawer-close aria-label="Close"><ds-icon name="clear"></ds-icon></button>
+      <!-- View: Content Lab menu -->
+      <div class="app-drawer-body" data-view="menu">
+        <div class="app-cl-hero">
+          <img src="assets/illustration.svg" alt="" width="580" height="300">
+        </div>
+        <h2 class="app-cl-title" id="content-lab-title">Get more from your video</h2>
+        <div class="app-cl-sections" id="content-lab-sections"></div>
+        <p class="app-cl-disclaimer">AI-generated content may contain errors or omissions. Please review before use.</p>
+      </div>
+
+      <!-- View: Create clips form, shown when no clips exist yet (Figma node 3969:9901) -->
+      <div class="app-drawer-body" data-view="clips-create" hidden>
+        <div class="app-cl-hero app-cc-hero">
+          <img src="assets/clips-hero.svg" alt="" width="120.4" height="140">
+        </div>
+        <h2 class="app-cl-title app-cc-title">Create clips</h2>
+        <form class="app-cc-form" id="clips-create-form">
+          <p class="app-cc-intro">Turn the most interesting moments of your video a short clip</p>
+
+          <div class="ds-form-field">
+            <span class="ds-form-label" id="cc-duration-label">Clips duration (Estimated)</span>
+            <div class="app-cc-options" role="radiogroup" aria-labelledby="cc-duration-label">
+              <button type="button" class="app-cc-option" role="radio" aria-checked="true">≈30s</button>
+              <button type="button" class="app-cc-option" role="radio" aria-checked="false">≈1 min</button>
+              <button type="button" class="app-cc-option" role="radio" aria-checked="false">≈5 min</button>
+              <button type="button" class="app-cc-option" role="radio" aria-checked="false">Custom</button>
+            </div>
+          </div>
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="cc-instructions">Instructions (Optional) <span class="ds-form-counter" id="cc-counter">0/500</span></label>
+            <textarea class="ds-textarea" id="cc-instructions" maxlength="500" placeholder="Provide more details to match your desired outcome"></textarea>
+            <div class="app-cc-prompts">
+              <button type="button" class="ds-tag" data-cc-prompt><ds-icon name="add" size="16"></ds-icon>Key insights and takeaways</button>
+              <button type="button" class="ds-tag" data-cc-prompt><ds-icon name="add" size="16"></ds-icon>Find specific moments:</button>
+              <button type="button" class="ds-tag" data-cc-prompt><ds-icon name="add" size="16"></ds-icon>Create top moments</button>
+            </div>
+          </div>
+
+          <div class="ds-form-field">
+            <span class="ds-form-label app-cc-label-help">Choose language
+              <span class="ds-hint-trigger">
+                <ds-icon class="app-cc-help" name="help" size="16" tabindex="0" aria-label="About language"></ds-icon>
+                <span class="ds-hint ds-hint-top">
+                  <span class="ds-hint-body">Language of the clip titles and captions</span>
+                  <span class="ds-hint-arrow"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M0 0L5.4 7Q7 9 8.6 7L14 0Z" fill="currentColor"/></svg></span>
+                </span>
+              </span>
+            </span>
+            <div class="ds-select-wrapper app-cc-select">
+              <button type="button" class="ds-select" aria-haspopup="listbox">
+                <span>English</span>
+                <ds-icon class="ds-select-chevron" name="chevron-down" size="16"></ds-icon>
+              </button>
+              <div class="ds-select-menu" role="listbox">
+                <button type="button" class="ds-select-item" role="option" aria-selected="true"><span class="ds-select-item-label">English</span><ds-icon class="ds-select-item-trailing" name="check" size="16"></ds-icon></button>
+                <button type="button" class="ds-select-item" role="option"><span class="ds-select-item-label">Spanish</span></button>
+                <button type="button" class="ds-select-item" role="option"><span class="ds-select-item-label">French</span></button>
+                <button type="button" class="ds-select-item" role="option"><span class="ds-select-item-label">German</span></button>
+                <button type="button" class="ds-select-item" role="option"><span class="ds-select-item-label">Hebrew</span></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="app-cc-actions">
+            <button type="submit" class="ds-btn ds-btn-lg ds-btn-primary"><ds-icon name="gen-ai" size="24"></ds-icon>Generate</button>
+            <button type="button" class="ds-btn ds-btn-lg ds-btn-primary ds-btn-borderless" data-go-view="menu">Back to clips</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- View: Clips being generated (Figma node 3969:11539) -->
+      <div class="app-drawer-body" data-view="clips-loading" hidden>
+        <div class="app-view-header">
+          <h2 class="app-view-title">Create clips</h2>
+        </div>
+        <div class="app-view-actions">
+          <button class="ds-btn ds-btn-lg ds-btn-secondary" disabled>Generate new</button>
+        </div>
+        <div class="app-cc-loading" role="status">
+          <div class="app-cc-dots" aria-hidden="true"></div>
+          <p class="app-cc-loading-title">Creating clips</p>
+          <p class="app-cc-loading-text">This may take some time. You can do your own thing in the meantime.</p>
+        </div>
+      </div>
+
+      <!-- View: Generated clips list (Figma node 15:1570) -->
+      <div class="app-drawer-body" data-view="clips" hidden>
+        <div class="app-view-header">
+          <button class="ds-btn ds-btn-md ds-btn-secondary ds-btn-borderless ds-btn-icon" data-go-view="menu" aria-label="Back"><ds-icon name="chevron-left"></ds-icon></button>
+          <h2 class="app-view-title">Create clips</h2>
+        </div>
+        <div class="app-view-actions app-cc-list-actions">
+          <button class="ds-btn ds-btn-lg ds-btn-primary" data-go-view="clips-create"><ds-icon name="gen-ai" size="24"></ds-icon>Generate new</button>
+          <button class="ds-btn ds-btn-lg ds-btn-secondary"><ds-icon name="multiple-video" size="24"></ds-icon>Combine clips</button>
+        </div>
+        <div class="app-cc-list" id="clips-list"></div>
+      </div>
+
+      <!-- View: Summary & chapters (Figma node 17050:26453) -->
+      <div class="app-drawer-body" data-view="summary" hidden>
+        <div class="app-view-header">
+          <button class="ds-btn ds-btn-md ds-btn-secondary ds-btn-borderless ds-btn-icon" data-go-view="menu" aria-label="Back"><ds-icon name="chevron-left"></ds-icon></button>
+          <h2 class="app-view-title">Summary &amp; chapters</h2>
+        </div>
+        <div class="app-view-actions">
+          <button class="ds-btn ds-btn-lg ds-btn-primary">Generate new</button>
+        </div>
+        <div class="app-view-list">
+          <p class="app-view-separator">Drafts</p>
+          <div id="summary-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save clip modal: "Preparing your video" step, then the details form -->
+  <!-- Change ratio with AI (verticalization) -->
+  <div class="ds-modal ds-modal-lg" id="ratio-modal" hidden>
+    <div class="ds-modal-backdrop"></div>
+    <div class="ds-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="ratio-title">
+      <div class="ds-modal-header">
+        <h2 class="ds-modal-title" id="ratio-title">Change ratio with AI</h2>
+        <button class="ds-modal-close" data-ds-close aria-label="Close"><ds-icon name="clear"></ds-icon></button>
+      </div>
+      <div class="ds-modal-body">
+        <p class="app-ratio-sub">AI reframes every shot to keep the speaker and the action in view.</p>
+            <div class="app-ratio-tiles" role="radiogroup" aria-label="New format">
+              <label class="app-ratio-tile">
+                <input type="radio" name="clip-ratio" value="9:16" class="app-ratio-input">
+                <span class="app-ratio-pic app-ratio-pic-v" aria-hidden="true"><span class="app-ratio-frame"><span class="app-ratio-person"></span></span></span>
+                <span class="app-ratio-name">Vertical</span>
+                <span class="app-ratio-value">9:16</span>
+                <span class="app-ratio-uses">Shorts, Reels, TikTok and Stories. Mobile apps and microlearning on the go.</span>
+              </label>
+              <label class="app-ratio-tile">
+                <input type="radio" name="clip-ratio" value="1:1" class="app-ratio-input">
+                <span class="app-ratio-pic app-ratio-pic-sq" aria-hidden="true"><span class="app-ratio-frame"><span class="app-ratio-person"></span></span></span>
+                <span class="app-ratio-name">Square</span>
+                <span class="app-ratio-value">1:1</span>
+                <span class="app-ratio-uses">Social feed posts on LinkedIn, Instagram and Facebook. Email and newsletters.</span>
+              </label>
+              <label class="app-ratio-tile">
+                <input type="radio" name="clip-ratio" value="4:5" class="app-ratio-input">
+                <span class="app-ratio-pic app-ratio-pic-p" aria-hidden="true"><span class="app-ratio-frame"><span class="app-ratio-person"></span></span></span>
+                <span class="app-ratio-name">Portrait</span>
+                <span class="app-ratio-value">4:5</span>
+                <span class="app-ratio-uses">Instagram and Facebook feeds, where it fills more of the screen. Paid social ads.</span>
+              </label>
+            </div>
+      </div>
+      <div class="ds-modal-footer">
+        <button class="ds-btn ds-btn-md ds-btn-secondary ds-btn-borderless" data-ds-close>Cancel</button>
+        <button class="ds-btn ds-btn-md ds-btn-secondary" data-ratio-submit="copy" disabled>Save as a copy</button>
+        <button class="ds-btn ds-btn-md ds-btn-primary" data-ratio-submit="replace" disabled>Replace video</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-modal ds-modal-md" id="save-clip-modal" hidden>
+    <div class="ds-modal-backdrop"></div>
+    <div class="ds-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="save-clip-title">
+      <div class="ds-modal-header">
+        <h2 class="ds-modal-title" id="save-clip-title">Save a single video</h2>
+        <button class="ds-modal-close" data-ds-close aria-label="Close"><ds-icon name="clear"></ds-icon></button>
+      </div>
+      <div class="ds-modal-body">
+        <div class="app-sc-preparing" data-sc-step="preparing">
+          <div class="app-sc-dots" aria-hidden="true"></div>
+          <p class="app-sc-preparing-text">Preparing your video</p>
+        </div>
+        <div data-sc-step="form" hidden>
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="sc-title">Title</label>
+            <input class="ds-input ds-input-md" id="sc-title">
+          </div>
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="sc-desc">Description (optional)</label>
+            <textarea class="ds-textarea" id="sc-desc"></textarea>
+          </div>
+          <div class="ds-form-field">
+            <label class="ds-form-label">Tags (optional)</label>
+            <div class="app-sc-tags" id="sc-tags"></div>
+          </div>
+          <div class="ds-form-field">
+            <label class="ds-form-label">Options</label>
+            <label class="ds-checkbox">
+              <input type="checkbox" class="ds-checkbox-input" id="sc-burn-captions">
+              <span class="ds-checkbox-indicator"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <span class="ds-checkbox-label">Burn captions</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="ds-modal-footer">
+        <button class="ds-btn ds-btn-md ds-btn-secondary ds-btn-borderless" data-ds-close>Cancel</button>
+        <button class="ds-btn ds-btn-md ds-btn-primary" id="sc-save" disabled>Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../ds/ds-icons.js"></script>
+  <script src="../ds/ds.js"></script>
+  <script src="https://cdnapisec.kaltura.com/p/1912501/embedPlaykitJs/uiconf_id/57496443"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

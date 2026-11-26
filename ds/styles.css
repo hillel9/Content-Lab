@@ -38,7 +38,9 @@
   /* Tints — translucent brand colors for hover / selected backgrounds */
   --ds-primary-tint-6: rgba(0,110,250,0.06);
   --ds-primary-tint-10: rgba(0,110,250,0.1);
+  --ds-primary-tint-20: rgba(0,110,250,0.2);
   --ds-danger-tint-10: rgba(202,28,45,0.1);
+  --ds-danger-tint-20: rgba(202,28,45,0.2);
 
   /* Tones — Light Theme */
   --ds-tone-1: #333333;
@@ -246,6 +248,60 @@ html, body {
   border: none;
 }
 
+/* Processing — the content is hidden (the button keeps its width) and a
+   spinner sized to the button turns in its place. Clicks are ignored
+   (ds.js also blocks Enter/Space). Add the class or aria-busy="true". */
+.ds-btn.ds-btn-processing,
+.ds-btn[aria-busy="true"] {
+  position: relative;
+  color: transparent;
+  cursor: progress;
+  pointer-events: none;
+  --ds-btn-spin-arc: var(--ds-tone-1);
+  --ds-btn-spin-track: var(--ds-tone-4);
+  --ds-btn-spin-size: 16px;
+  --ds-btn-spin-stroke: 3px;
+}
+.ds-btn.ds-btn-processing > *,
+.ds-btn[aria-busy="true"] > * { visibility: hidden; }
+.ds-btn.ds-btn-processing::after,
+.ds-btn[aria-busy="true"]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--ds-btn-spin-size);
+  height: var(--ds-btn-spin-size);
+  margin: calc(var(--ds-btn-spin-size) / -2) 0 0 calc(var(--ds-btn-spin-size) / -2);
+  box-sizing: border-box;
+  border: var(--ds-btn-spin-stroke) solid var(--ds-btn-spin-track);
+  border-top-color: var(--ds-btn-spin-arc);
+  border-radius: 50%;
+  animation: ds-spin var(--ds-duration-spin) linear infinite;
+}
+/* Spinner size follows the button size */
+.ds-btn-sm.ds-btn-processing, .ds-btn-sm[aria-busy="true"] { --ds-btn-spin-size: 12px; --ds-btn-spin-stroke: 2px; }
+.ds-btn-lg.ds-btn-processing, .ds-btn-lg[aria-busy="true"],
+.ds-btn-xl.ds-btn-processing, .ds-btn-xl[aria-busy="true"] { --ds-btn-spin-size: 20px; --ds-btn-spin-stroke: 4px; }
+/* Spinner colors per variant (backgrounds stay as they are) */
+.ds-btn-primary.ds-btn-processing, .ds-btn-primary[aria-busy="true"],
+.ds-btn-danger.ds-btn-processing, .ds-btn-danger[aria-busy="true"] {
+  --ds-btn-spin-arc: var(--ds-w-100);
+  --ds-btn-spin-track: var(--ds-w-40);
+}
+.ds-btn-borderless.ds-btn-primary.ds-btn-processing, .ds-btn-borderless.ds-btn-primary[aria-busy="true"] {
+  --ds-btn-spin-arc: var(--ds-primary);
+  --ds-btn-spin-track: var(--ds-primary-tint-20);
+}
+.ds-btn-borderless.ds-btn-danger.ds-btn-processing, .ds-btn-borderless.ds-btn-danger[aria-busy="true"] {
+  --ds-btn-spin-arc: var(--ds-danger);
+  --ds-btn-spin-track: var(--ds-danger-tint-20);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-btn.ds-btn-processing::after,
+  .ds-btn[aria-busy="true"]::after { animation-duration: calc(var(--ds-duration-spin) * 3); }
+}
+
 /* Icon-only */
 .ds-btn-icon { min-width: unset; padding: 0; }
 .ds-btn-icon.ds-btn-sm { width: 24px; }
@@ -276,10 +332,14 @@ html, body {
   outline: 2px solid var(--ds-primary);
   outline-offset: 2px;
 }
+/* Disabled — outline like .ds-btn: empty background, tone-4 border and icon */
 .ds-btn-circular:disabled,
-.ds-btn-circular[aria-disabled="true"] {
-  background: var(--ds-tone-5);
+.ds-btn-circular[aria-disabled="true"],
+[data-theme="dark"] .ds-btn-circular:disabled,
+[data-theme="dark"] .ds-btn-circular[aria-disabled="true"] {
+  background: transparent;
   color: var(--ds-tone-4);
+  border: 1px solid var(--ds-tone-4);
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -640,7 +700,7 @@ html, body {
   font-size: var(--ds-font-size-4);
   color: var(--ds-tone-1);
   background: var(--ds-background);
-  border: 1px solid var(--ds-tone-4);
+  border: 1px solid var(--ds-tone-3);
   border-radius: var(--ds-roundness-1);
   cursor: pointer;
   outline: none;
@@ -820,6 +880,172 @@ html, body {
   font-size: var(--ds-font-size-4);
   line-height: var(--ds-line-height-16);
   color: var(--ds-tone-2);
+}
+
+/* ============================================
+   Autocomplete
+   A text input with a menu of suggested options. Single value, or multiple
+   values shown as chips (.ds-autocomplete-multiple). Behavior is in ds.js.
+   ============================================ */
+.ds-autocomplete {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+/* -- Field (looks like .ds-input; holds chips, the text input and the icons) -- */
+.ds-autocomplete-field {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--ds-space-1) var(--ds-space-1-5);
+  min-height: 32px;
+  padding: var(--ds-space-0-75) var(--ds-space-2) var(--ds-space-0-75) var(--ds-space-1);
+  background: var(--ds-tone-8);
+  border: 1px solid var(--ds-tone-3);
+  border-radius: var(--ds-roundness-1);
+  cursor: text;
+  transition: border-color var(--ds-duration-base);
+}
+.ds-autocomplete-field:hover { border-color: var(--ds-tone-2); }
+.ds-autocomplete-open .ds-autocomplete-field,
+.ds-autocomplete-field:focus-within {
+  border-color: var(--ds-primary);
+  flex-wrap: wrap; /* the field grows to show every chip while in use */
+}
+
+/* -- Text input -- */
+.ds-autocomplete-input {
+  flex: 1 1 60px;
+  min-width: 60px;
+  height: 24px;
+  padding: 0 var(--ds-space-1);
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--ds-font-family);
+  font-weight: var(--ds-font-weight-regular);
+  font-size: var(--ds-font-size-4);
+  color: var(--ds-tone-1);
+}
+.ds-autocomplete-input::placeholder { color: var(--ds-tone-3); }
+
+/* -- Chips (multiple) use .ds-chip; nothing to add except not shrinking -- */
+.ds-autocomplete-field .ds-chip { flex-shrink: 0; }
+
+/* -- "+N" counter for chips that don't fit while the field is not in use -- */
+.ds-autocomplete-field .ds-autocomplete-more {
+  display: none;
+  flex-shrink: 0;
+}
+.ds-autocomplete-field .ds-autocomplete-more.ds-autocomplete-more-shown { display: inline-flex; }
+.ds-autocomplete-more .ds-chip-content { padding: 0 var(--ds-space-1-5); }
+.ds-autocomplete-chip-hidden { display: none !important; }
+.ds-autocomplete-more .ds-hint-body { white-space: pre-line; }
+
+/* -- Clear (x) and chevron, pushed to the right -- */
+.ds-autocomplete-clear,
+.ds-autocomplete-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ds-tone-1);
+  cursor: pointer;
+}
+.ds-autocomplete-clear { margin-left: auto; }
+.ds-autocomplete-clear + .ds-autocomplete-chevron { margin-left: 0; }
+.ds-autocomplete-chevron { margin-left: auto; transition: transform var(--ds-duration-base); }
+.ds-autocomplete-clear[hidden] { display: none; }
+.ds-autocomplete-clear[hidden] + .ds-autocomplete-chevron { margin-left: auto; }
+.ds-autocomplete-open .ds-autocomplete-chevron { transform: rotate(180deg); }
+.ds-autocomplete-clear:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  border-radius: var(--ds-roundness-tiny);
+}
+
+/* -- Menu (reuses .ds-select-menu look; full field width) -- */
+.ds-autocomplete-menu {
+  position: absolute;
+  top: calc(100% + var(--ds-space-1));
+  left: 0;
+  width: 100%;
+  z-index: var(--ds-z-dropdown);
+  display: none;
+}
+.ds-autocomplete-open .ds-autocomplete-menu { display: block; }
+.ds-autocomplete-menu .ds-select-item[hidden] { display: none; }
+
+/* keyboard-highlighted option (focus stays in the text input) */
+.ds-autocomplete-menu .ds-select-item.ds-autocomplete-active::before {
+  background: var(--ds-tone-6);
+}
+
+/* option picture (avatar) */
+.ds-autocomplete-picture {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ds-roundness-1);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* multiple: the checkbox in each option follows aria-selected */
+.ds-autocomplete-menu .ds-select-item[aria-selected="true"] .ds-checkbox-indicator {
+  background: var(--ds-primary);
+  border-color: var(--ds-primary);
+}
+.ds-autocomplete-menu .ds-select-item[aria-selected="true"] .ds-checkbox-indicator svg {
+  display: block;
+}
+
+/* -- No results -- */
+.ds-autocomplete-empty {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-1);
+  padding: var(--ds-space-4) var(--ds-space-4);
+  font-family: var(--ds-font-family);
+  font-weight: var(--ds-font-weight-bold);
+  font-size: var(--ds-font-size-4);
+  line-height: var(--ds-line-height-20);
+  color: var(--ds-tone-1);
+  text-align: center;
+}
+/* shows by itself whenever the menu has no visible option */
+.ds-autocomplete-menu:not(:has(.ds-select-item[role="option"]:not([hidden]))) .ds-autocomplete-empty { display: flex; }
+.ds-autocomplete-empty-icon { color: var(--ds-warning); }
+.ds-autocomplete-retry {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--ds-primary);
+  cursor: pointer;
+}
+.ds-autocomplete-retry:hover { color: var(--ds-primary-darker); }
+
+/* -- Disabled (put `disabled` on the text input) -- */
+.ds-autocomplete:has(.ds-autocomplete-input:disabled) .ds-autocomplete-field {
+  border-color: var(--ds-tone-4);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.ds-autocomplete-input:disabled,
+.ds-autocomplete-input:disabled::placeholder,
+.ds-autocomplete:has(.ds-autocomplete-input:disabled) .ds-autocomplete-chevron {
+  color: var(--ds-tone-4);
+}
+.ds-autocomplete:has(.ds-autocomplete-input:disabled) .ds-chip {
+  background: var(--ds-tone-8);
+  color: var(--ds-tone-4);
 }
 
 /* ============================================
@@ -1880,4 +2106,37 @@ ds-icon svg {
 /* Page behind the modal does not scroll */
 html.ds-modal-open {
   overflow: hidden;
+}
+
+/* ============================================
+   Spinner
+   ============================================ */
+/* A ring with a quarter arc that turns. Default is primary on a primary-tint
+   track; -white sits on dark or colored surfaces, -black on light images. */
+.ds-spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 4px solid var(--ds-primary-tint-20);
+  border-top-color: var(--ds-primary);
+  border-radius: 50%;
+  vertical-align: middle;
+  transform: rotate(45deg);
+  animation: ds-spin var(--ds-duration-spin) linear infinite;
+}
+.ds-spinner-white {
+  border-color: var(--ds-w-40);
+  border-top-color: var(--ds-w-100);
+}
+.ds-spinner-black {
+  border-color: var(--ds-b-40);
+  border-top-color: var(--ds-b-100);
+}
+@keyframes ds-spin {
+  0%   { transform: rotate(45deg); }
+  100% { transform: rotate(405deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-spinner { animation-duration: calc(var(--ds-duration-spin) * 3); }
 }

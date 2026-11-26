@@ -3,7 +3,7 @@
 Read this before writing any UI in a prototype that has a `ds/` folder. It lists every component's exact markup, the JS API, all tokens and all icon names. Everything here is in `ds/styles.css`, `ds/ds.js`, `ds/ds-icons.js`.
 
 <!-- BEGIN GENERATED: version -->
-DS version: **1.1.0**
+DS version: **1.2.0**
 <!-- END GENERATED: version -->
 
 ## Rules
@@ -12,7 +12,7 @@ DS version: **1.1.0**
 2. **Icons: `<ds-icon name="..." size="16|24">` only.** Never paste SVG, never use emoji or icon fonts. Use only names from the Icons section. Default size is 24. Icons take `currentColor`, so color them via the parent's `color`.
 3. **Never edit anything in `ds/`.** It is a copy of a frozen release. If a component or token is missing, build it in your own CSS from `--ds-*` tokens, and tell the user the DS lacks it.
 4. **Only use classes listed here.** Do not invent `ds-` classes. Do not restyle DS components with overrides; pick a documented variant.
-5. **Do not write JS for DS behavior.** Select, tabs, segmented control, switch, table selection, pagination, toast, modal and theme already work (event delegation, also for elements added later). React to them with the `ds-change` / `ds-open` / `ds-close` events or the `window.DS` API.
+5. **Do not write JS for DS behavior.** Select, autocomplete, tabs, segmented control, switch, table selection, pagination, toast, modal and theme already work (event delegation, also for elements added later). React to them with the `ds-change` / `ds-open` / `ds-close` events or the `window.DS` API.
 6. **No frameworks needed; must work from `file://`.** Classic `<script>` tags only (no `type="module"`, no `fetch`).
 7. Copy markup exactly, including `role`, `aria-*` and the `hidden` attribute. The JS and CSS select on them.
 
@@ -68,7 +68,9 @@ All defined in `:root` in `styles.css`. `/* dark: x */` marks tokens that change
 /* Tints — translucent brand colors for hover / selected backgrounds */
 --ds-primary-tint-6: rgba(0,110,250,0.06);
 --ds-primary-tint-10: rgba(0,110,250,0.1);
+--ds-primary-tint-20: rgba(0,110,250,0.2);
 --ds-danger-tint-10: rgba(202,28,45,0.1);
+--ds-danger-tint-20: rgba(202,28,45,0.2);
 
 /* Tones — Light Theme */
 --ds-tone-1: #333333;   /* dark: #FFFFFF */
@@ -209,7 +211,19 @@ Base `ds-btn` + size (`ds-btn-sm` 24px | `-md` 32px | `-lg` 40px | `-xl` 48px) +
 ```
 Icon-only sizing: the CSS forces the icon to 24px in `-md` and `-lg` icon buttons; use `size="16"` in `-sm`.
 
-Circular (media overlay buttons, dark translucent bg): `ds-btn-circular` + `ds-btn-circular-sm` (32px, icon 24) | `-md` (48px, icon 36) | `-lg` (56px, icon 36). Supports `disabled`.
+Processing (an action is running): add `ds-btn-processing` and `aria-busy="true"`, or call `DS.setProcessing(btn, true)` / `DS.setProcessing(btn, false)`. The content is hidden but the button keeps its width and background; a centered spinner turns in its place (12px in `-sm`, 16px in `-md`, 20px in `-lg`/`-xl`; white on primary/danger, `tone-1` on secondary, primary/danger color when borderless). Clicks, Enter and Space are ignored while it is set. Do not also add `disabled` (that switches to the outline disabled look). Works with `ds-btn-icon` too.
+```html
+<button class="ds-btn ds-btn-md ds-btn-primary ds-btn-processing" aria-busy="true">Save</button>
+```
+```js
+saveBtn.addEventListener('click', async () => {
+  DS.setProcessing(saveBtn, true);
+  await save();
+  DS.setProcessing(saveBtn, false);
+});
+```
+
+Circular (media overlay buttons, dark translucent bg): `ds-btn-circular` + `ds-btn-circular-sm` (32px, icon 24) | `-md` (48px, icon 36) | `-lg` (56px, icon 36). Supports `disabled` (outline: transparent background, `tone-4` border and icon).
 ```html
 <button class="ds-btn-circular ds-btn-circular-sm" aria-label="Play"><ds-icon name="play"></ds-icon></button>
 ```
@@ -291,6 +305,50 @@ Switch rows inside a menu (menu has no `role`, trigger `aria-haspopup="true"`): 
   <button class="ds-switch-track ds-switch-sm ds-switch-off" role="switch" aria-checked="false"><span class="ds-switch-handle"></span></button></div>
 ```
 Multi-select: menu gets `aria-multiselectable="true"`; each item is a `<label class="ds-select-item">` wrapping a checkbox (`<label class="ds-checkbox" style="pointer-events:none">` + the checkbox markup above) and the label span. The menu stays open; every change fires `ds-change` on the wrapper with `detail.value` = array of all checked values, `detail.label` = checked labels joined by ", ". The trigger text does NOT update; update it yourself in a `ds-change` listener.
+
+### Autocomplete (text input with suggestions)
+A text input with a menu of suggested options. Wrapper `div.ds-autocomplete` (full width of its container; set a width on it) > `div.ds-autocomplete-field` (looks like `ds-input`, 32px; tone-3 border, tone-2 on hover, primary while in use) holding `input.ds-autocomplete-input` (give it `placeholder` and `aria-label`), the clear button `button.ds-autocomplete-clear[hidden]` and the chevron `ds-icon.ds-autocomplete-chevron`; then `div.ds-autocomplete-menu.ds-select-menu` (as wide as the field) with options `button.ds-select-item[role=option][tabindex=-1]` + `span.ds-select-item-label`, and an optional no-results block `div.ds-autocomplete-empty`.
+
+Behavior (`ds.js` adds the combobox ARIA itself): focusing or clicking the field opens the menu with every option; typing filters options whose label contains the text (case-insensitive); ArrowDown/Up highlight an option (focus stays in the input), Home/End, Enter picks, Escape closes, Tab or a click outside closes. With no matching option the `.ds-autocomplete-empty` block shows. The clear (x) shows while open and there is a value; it clears everything and fires `ds-change`. `detail.value` = the option's `data-value`, else its label.
+- **Single value** (default): picking puts the label in the input, closes the menu, fires `ds-change` `{ value, label }`. Clearing fires `{ value: '', label: '' }`.
+- **Multiple values**: add `ds-autocomplete-multiple`. Picked values are chips (`ds-chip`, see Badges, tags, chips) placed before the input; `ds.js` creates them, copying the option's `img.ds-autocomplete-picture` into the chip. Preselect by writing chips yourself with `data-value` matching the options. Each option starts with `span.ds-checkbox-indicator` (the checkbox SVG) that follows `aria-selected`. Picking toggles a chip, keeps the menu open and clears the typed text; a chip's x or Backspace in the empty input removes one. Every change fires `ds-change` `{ value: [values], label: "A, B" }`. While the field is in use it wraps to show every chip; otherwise it stays one row and chips that don't fit become a `+N` counter whose hover hint lists them.
+- **Your own suggestions** (server search, recents, most used): add `data-filter="none"` on the wrapper. `ds.js` then never hides options; listen to the input's native `input` event and replace the menu's options yourself (keep `.ds-autocomplete-empty` in the menu; it shows when there are no options).
+- **Disabled**: `disabled` on the input. "Try again" (`button.ds-autocomplete-retry`) does nothing by itself; handle its click.
+
+```html
+<div class="ds-autocomplete" style="width:300px">
+  <div class="ds-autocomplete-field">
+    <input class="ds-autocomplete-input" placeholder="Pick a fruit" aria-label="Fruit">
+    <button type="button" class="ds-autocomplete-clear" aria-label="Clear" tabindex="-1" hidden><ds-icon name="close" size="16"></ds-icon></button>
+    <ds-icon class="ds-autocomplete-chevron" name="chevron-down" size="16"></ds-icon>
+  </div>
+  <div class="ds-autocomplete-menu ds-select-menu">
+    <button type="button" class="ds-select-item" role="option" tabindex="-1" data-value="apple"><span class="ds-select-item-label">Apple</span></button>
+    <button type="button" class="ds-select-item" role="option" tabindex="-1" data-value="banana"><span class="ds-select-item-label">Banana</span></button>
+    <div class="ds-autocomplete-empty">
+      <ds-icon class="ds-autocomplete-empty-icon" name="warning-triangle"></ds-icon>
+      We couldn't find results
+      <button type="button" class="ds-autocomplete-retry">Try again</button>
+    </div>
+  </div>
+</div>
+
+<div class="ds-autocomplete ds-autocomplete-multiple" style="width:500px">
+  <div class="ds-autocomplete-field">
+    <span class="ds-chip" data-value="celine"><img class="ds-chip-picture" src="celine.jpg" alt=""><span class="ds-chip-content">Celine Garnier<button type="button" class="ds-chip-close" tabindex="-1" aria-label="Remove Celine Garnier"><ds-icon name="close" size="16"></ds-icon></button></span></span>
+    <input class="ds-autocomplete-input" placeholder="Enter value" aria-label="People">
+    <button type="button" class="ds-autocomplete-clear" aria-label="Clear" tabindex="-1" hidden><ds-icon name="close" size="16"></ds-icon></button>
+    <ds-icon class="ds-autocomplete-chevron" name="chevron-down" size="16"></ds-icon>
+  </div>
+  <div class="ds-autocomplete-menu ds-select-menu">
+    <button type="button" class="ds-select-item" role="option" tabindex="-1" data-value="celine">
+      <span class="ds-checkbox-indicator"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <img class="ds-autocomplete-picture" src="celine.jpg" alt="">
+      <span class="ds-select-item-label">Celine Garnier</span>
+    </button>
+  </div>
+</div>
+```
 
 ### Tabs
 `div.ds-tabs[role=tablist]` > `button.ds-tab[role=tab][aria-selected]`. Exactly one `aria-selected="true"`. Optional icon `<ds-icon class="ds-tab-icon" name="...">` with the text in a `<span>`. Disabled: `disabled`. Tabs do not show/hide panels; do that in a `ds-change` listener. `ds-change` fires on the tablist, `detail: { value, label }` (value = `data-value` or the label), only when the selection actually changes. Arrow keys, Home and End move and select.
@@ -426,6 +484,15 @@ Structure: `div.ds-modal` + size (`ds-modal-sm` 400px | `-md` 560px | `-lg` 800p
 ```
 Events on the `.ds-modal` element (bubble): `ds-open` `detail: { id }`; `ds-close` `detail: { id, reason }` where `reason` is `'button'` (a `[data-ds-close]` click) or `'api'` (`DS.closeModal()`). Nested modals stack; `DS.closeModal()` closes the top one.
 
+### Spinner
+Loading indicator: a 20px ring (4px stroke) whose quarter arc turns. CSS only, no JS. Default is primary on a light primary track; `ds-spinner-white` for dark or colored surfaces (e.g. on a primary button area or a dark overlay); `ds-spinner-black` for light images. Give a standalone spinner `role="status"` and `aria-label="Loading"`; next to text that already says "Loading…", use `aria-hidden="true"` instead. Under reduced motion it turns more slowly.
+```html
+<span class="ds-spinner" role="status" aria-label="Loading"></span>
+<span class="ds-spinner ds-spinner-white" role="status" aria-label="Loading"></span>
+<span style="display:inline-flex;align-items:center;gap:var(--ds-space-2)"><span class="ds-spinner" aria-hidden="true"></span>Loading results…</span>
+```
+For a loading table use the table's own `ds-table-loader` state instead.
+
 ## Events
 
 All bubble, so listen on `document` and use `e.target`. Fired only on a user change, once per change.
@@ -434,6 +501,7 @@ All bubble, so listen on `document` and use `e.target`. Fired only on a user cha
 |---|---|---|
 | `ds-change` | select wrapper | `{ value, label }` - `value` = item `data-value` or the label text |
 | `ds-change` | multi-select wrapper | `{ value: [values], label: "A, B" }` - all checked items |
+| `ds-change` | `.ds-autocomplete` | single `{ value, label }` (cleared: `{ value: '', label: '' }`); multiple `{ value: [values], label: "A, B" }` - all chips |
 | `ds-change` | `.ds-tabs` / `.ds-segmented` | `{ value, label }` - `value` = item `data-value` or its label (segmented icon-only: its `aria-label`); not fired if the item was already selected |
 | `ds-change` | switch button | `{ value: true\|false, label }` - label = nearest `.ds-switch-label` / `.ds-select-item-label` text |
 | `ds-change` | `.ds-table-pagination` | `{ value: <number>, label: "<number>" }` |
@@ -458,9 +526,10 @@ Checkbox, radio, input and textarea fire only the native `change` / `input` even
 | `DS.showToast(element)` | clone a `.ds-ack-floating` element into a toast that stays until dismissed |
 | `DS.openModal('id')` | open a `.ds-modal` (warns if the id is not a modal); returns the element |
 | `DS.closeModal()` / `DS.closeModal('id')` | close the top modal / a specific one |
+| `DS.setProcessing(btn, on)` | `btn` is an element or id; `on` defaults to `true`. Toggles `ds-btn-processing` and `aria-busy` on a `.ds-btn` |
 
 Data attributes (no JS needed): `data-ds-open="modal-id"`, `data-ds-close`, `data-ds-toast`, `data-ds-theme-toggle`, `data-value` (select item, tab, segmented item).
 
 ## What the DS does not have
-No grid, layout, spacing-utility, heading, paragraph or link classes, and no card, sidebar, navbar, date picker, accordion, progress bar or loading-spinner component (the table spinner is table-only). For layout use your own `display:flex|grid` with `gap: var(--ds-space-N)`. For text use `font-size: var(--ds-font-size-N)`, `font-weight: var(--ds-font-weight-bold)`, `color: var(--ds-tone-1|2)`. Surfaces: `background: var(--ds-paper)` for panels, `var(--ds-elevated)` for floating layers, `border: 1px solid var(--ds-tone-5)`.
+No grid, layout, spacing-utility, heading, paragraph or link classes, and no card, sidebar, navbar, date picker, accordion or progress bar component. For layout use your own `display:flex|grid` with `gap: var(--ds-space-N)`. For text use `font-size: var(--ds-font-size-N)`, `font-weight: var(--ds-font-weight-bold)`, `color: var(--ds-tone-1|2)`. Surfaces: `background: var(--ds-paper)` for panels, `var(--ds-elevated)` for floating layers, `border: 1px solid var(--ds-tone-5)`.
 

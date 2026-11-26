@@ -669,27 +669,8 @@ body {
 }
 
 .app-clip-views {
-  width: 96px;
+  width: 128px;
   flex-shrink: 0;
-}
-
-/* ===== Prototype-only: clip processing status (DS candidate: inline spinner) ===== */
-.app-clip-status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ds-space-2);
-  height: 32px;
-  color: var(--ds-w-80);
-  font-weight: var(--ds-font-weight-bold);
-  white-space: nowrap;
-}
-
-.app-spin {
-  animation: app-spin var(--ds-duration-spin) linear infinite;
-}
-
-@keyframes app-spin {
-  to { transform: rotate(360deg); }
 }
 
 /* ===== Preview mode: trimmer (Prototype-only, DS candidate) ===== */
@@ -1182,4 +1163,126 @@ body {
 .app-cc-clip-selected,
 .app-cc-clip-selected:hover {
   background: var(--ds-primary-tint-10);
+}
+
+/* ===== Prototype-only: save clip modal (dots loader + tags field are DS candidates) ===== */
+#save-clip-modal { z-index: calc(var(--ds-z-modal) + 1); }
+#save-clip-modal [data-sc-step][hidden] { display: none; }
+.app-sc-preparing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-6) var(--ds-space-4);
+}
+.app-sc-dots {
+  display: grid;
+  grid-template-columns: repeat(24, 6px);
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-4) 0;
+}
+.app-sc-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ds-primary);
+  opacity: 0.3;
+  animation: app-sc-dot 1.4s ease-in-out infinite;
+}
+@keyframes app-sc-dot { 50% { opacity: 0.9; } }
+.app-sc-preparing-text {
+  margin: 0;
+  font-size: var(--ds-font-size-4);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-tone-1);
+}
+.app-sc-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-1);
+  min-height: 32px;
+  padding: var(--ds-space-1);
+  border: 1px solid var(--ds-tone-3);
+  border-radius: var(--ds-roundness-1);
+  background: var(--ds-tone-8);
+}
+
+/* ===== Prototype-only: saved clips (separator, processing state, clip options) ===== */
+.app-sv-separator {
+  margin: 0;
+  padding: var(--ds-space-4) 0 var(--ds-space-2);
+  text-align: center;
+  font-size: var(--ds-font-size-2);
+  font-weight: var(--ds-font-weight-bold);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ds-tone-2);
+}
+.app-sv-processing,
+.app-sv-options,
+.app-sv-status { display: none; }
+.app-pv-saved .app-sv-options {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-2);
+}
+.app-pv-saved [data-pv-mode="clip"] .app-pv-tiles,
+.app-pv-saved [data-pv-mode="clip"] .app-pv-feedback,
+.app-pv-saved footer[data-pv-mode="clip"] { display: none; }
+.app-pv-processing .app-sv-processing {
+  display: flex;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: var(--ds-b-100);
+  color: var(--ds-w-100);
+  font-size: var(--ds-font-size-5);
+}
+.app-player-clip { position: relative; }
+.app-pv-processing .app-sv-status {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin: 0 0 var(--ds-space-2);
+  color: var(--ds-w-100);
+  font-size: var(--ds-font-size-5);
+}
+.app-sv-label {
+  margin: 0 0 var(--ds-space-2);
+  font-size: var(--ds-font-size-2);
+  font-weight: var(--ds-font-weight-bold);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ds-w-100);
+}
+.app-sv-option {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  height: 40px;
+  padding: 0 var(--ds-space-4);
+  border: none;
+  border-radius: var(--ds-roundness-1);
+  background: none;
+  color: var(--ds-w-100);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-5);
+  font-weight: var(--ds-font-weight-bold);
+  cursor: pointer;
+}
+.app-sv-option:hover { background: var(--ds-b-60); }
+/* Not available until processing finishes: shown, but disabled */
+.app-pv-processing .app-sv-option-download { opacity: var(--ds-opacity-disabled); pointer-events: none; }
+
+/* ===== Prototype-only: Popular moment tag (uses DS bolt icon; a fire icon is a DS candidate) ===== */
+.app-popular {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  white-space: nowrap;
 }

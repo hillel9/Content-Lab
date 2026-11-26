@@ -56,6 +56,8 @@
   var PLAY_ICON = '<ds-icon name="play"></ds-icon>';
   var PAUSE_ICON = '<img src="assets/pause.svg" alt="" width="24" height="24">';
 
+  // Prototype: 3 chapters, spread through the video, are tagged as popular moments
+  var POPULAR_CHAPTERS = [0, 3, 4];
   function renderClipList(draft) {
     document.getElementById('pv-clip-list').innerHTML = draft.chapters.map(function (c, i) {
       return '<div class="app-clip-row">' +
@@ -63,10 +65,10 @@
         '<button class="app-icon-btn-on-dark" data-play-chapter="' + i + '" aria-label="Play chapter">' + PLAY_ICON + '</button>' +
         '<img class="app-clip-thumb" src="' + thumbUrl(toSec(c.time) + 5, 160) + '" alt="">' +
         '<span class="app-clip-name">' + c.title + '</span>' +
-        '<span class="app-clip-views">' + c.views + ' Views</span>' +
-        (c.processing
-          ? '<span class="app-clip-status" role="status"><ds-icon class="app-spin" name="general-spinner" size="16"></ds-icon>Processing…</span>'
-          : '<button class="app-pv-btn-dark app-pv-btn-dark-md" data-create-clip="' + i + '">Create clip</button>') +
+        '<span class="app-clip-views">' + (POPULAR_CHAPTERS.indexOf(i) > -1 ? '<span class="app-popular"><ds-icon name="bolt" size="16"></ds-icon>Popular moment</span>' : '') + '</span>' +
+        // DS button processing state (ds-btn-processing): keeps width, shows a spinner, ignores clicks
+        '<span data-theme="dark"><button class="ds-btn ds-btn-md ds-btn-secondary' + (c.processing ? ' ds-btn-processing" aria-busy="true"' : '"') +
+          ' data-create-clip="' + i + '">Create clip</button></span>' +
       '</div>';
     }).join('');
     if (kClips) updateClipButtons();
@@ -86,6 +88,7 @@
     }
     if (mode !== 'clips' && kClips) kClips.pause();
     if (mode !== 'clip' && kClip) kClip.pause();
+    if (mode !== 'clip') preview.classList.remove('app-pv-saved', 'app-pv-processing');
     syncUrl();
   }
 
@@ -228,6 +231,7 @@
     if (kPlayer) kPlayer.pause();
     if (kClip) kClip.pause();
     selectClipRow(-1);
+    data.generatedClips = data.generatedClips.filter(function (c) { return !c.pending; });
     preview.hidden = true;
     drawer.classList.remove('app-drawer-previewing');
     syncUrl();
@@ -379,12 +383,14 @@
     return fresh;
   }
 
-  // Chapter -> clip: the row shows Processing, then the whole chapter becomes a draft clip
+  // Chapter -> clip: the button shows processing, then the whole chapter opens as a clip in the preview panel.
+  // Dev limitation: it isn't saved in the backend, so it stays out of the clips list (pending) until the user saves it;
+  // closing the panel drops it.
   // and the Clips list opens with that clip in the preview panel.
   var CLIP_PROCESS_MS = 2500;
   function createClipFromChapter(i) {
     var draft = currentDraft, ch = draft.chapters[i], next = draft.chapters[i + 1];
-    var existing = data.generatedClips.filter(function (c) { return c.fromChapter && c.chapter === i; })[0];
+    var existing = data.generatedClips.filter(function (c) { return c.fromChapter && c.chapter === i && !c.pending; })[0];
     if (existing) return showCreatedClip(existing);
     if (ch.processing) return;
     ch.processing = true;
@@ -393,11 +399,9 @@
       ch.processing = false;
       renderClipList(draft);
       var start = toSec(ch.time);
-      var clip = { chapter: i, fromChapter: true, start: start,
+      var clip = { chapter: i, fromChapter: true, pending: true, start: start,
         length: (next ? toSec(next.time) : k.duration) - start, title: ch.title };
       data.generatedClips.unshift(clip);
-      onClipsChanged();
-      DS.showToast({ type: 'success', message: 'Clip \u201c' + ch.title + '\u201d saved as a draft' });
       // Only jump if the user is still on the chapter list
       var main = preview.hidden ? null : preview.querySelector('.app-pv-main:not([hidden])');
       if (main && main.getAttribute('data-pv-mode') === 'clips') showCreatedClip(clip);
@@ -445,7 +449,15 @@
   }
 
   function renderGeneratedClips() {
-    document.getElementById('clips-list').innerHTML = data.generatedClips.map(function (c, i) {
+    // Drafts first, then a "Saved clips" separator with the saved ones (indices stay those of data.generatedClips)
+    var drafts = [], saved = [];
+    data.generatedClips.forEach(function (c, i) { if (!c.pending) (c.saved ? saved : drafts).push(i); });
+    var html = drafts.map(clipRow).join('');
+    if (saved.length) html += '<p class="app-sv-separator">Saved clips</p>' + saved.map(clipRow).join('');
+    document.getElementById('clips-list').innerHTML = html;
+  }
+  function clipRow(i) {
+    var c = data.generatedClips[i];
       return '<div class="app-cc-clip' + (i === selectedClip ? ' app-cc-clip-selected' : '') + '" tabindex="0" role="button" data-cc-clip="' + i + '">' +
         '<span class="app-cc-clip-player">' +
           '<img src="' + thumbUrl(c.start + c.length / 2, 400) + '" alt="">' +
@@ -455,13 +467,12 @@
               'width:max(var(--ds-space-6), ' + (c.length / k.duration * 100).toFixed(2) + '%)"></span></span>' +
         '</span>' +
         '<span class="app-cc-clip-text">' +
-          '<span class="app-cc-clip-meta">' + fmt(c.length) + '<span>&bull;</span>' + (c.saved ? 'Saved' : 'Draft') + '</span>' +
+          '<span class="app-cc-clip-meta">' + fmt(c.length) + '<span>&bull;</span>' + (c.saved ? 'Video' : 'Draft') + '</span>' +
           '<span class="app-cc-clip-title">' + c.title + '</span>' +
           // Only AI-generated clips have a prompt to reuse; clips made from a chapter don't
           (c.prompt ? reuseButton(c.prompt) : '') +
         '</span>' +
       '</div>';
-    }).join('');
   }
 
   // ----- Generated clip preview (left panel) -----
@@ -478,6 +489,9 @@
     selectClipRow(i);
     document.getElementById('pv-title').textContent = c.title;
     setPreviewMode('clip');
+    preview.classList.toggle('app-pv-saved', !!c.saved);
+    document.querySelector('[data-clip-delete]').textContent = c.pending ? 'Discard' : 'Delete draft';
+    preview.classList.toggle('app-pv-processing', !!c.processing);
     preview.hidden = false;
     drawer.classList.add('app-drawer-previewing');
     syncUrl();
@@ -501,8 +515,38 @@
   }
   function updateClipsCardCount() {
     var meta = clipsCard.querySelector('.app-cl-card-meta');
-    if (meta) meta.textContent = data.generatedClips.length + ' Clips';
+    if (meta) meta.textContent = data.generatedClips.filter(function (c) { return !c.pending; }).length + ' Clips';
   }
+
+  // ===== Save clip modal: "Preparing your video" for 2s, then the details form =====
+  var scTimer;
+  function openSaveClipModal(clip) {
+    var modal = document.getElementById('save-clip-modal');
+    var dots = modal.querySelector('.app-sc-dots');
+    if (!dots.children.length) dots.innerHTML = new Array(73).join('<span></span>');
+    Array.prototype.forEach.call(dots.children, function (d, i) { d.style.animationDelay = (i % 24) * 0.05 + 's'; });
+    modal.querySelector('[data-sc-step="preparing"]').hidden = false;
+    modal.querySelector('[data-sc-step="form"]').hidden = true;
+    document.getElementById('sc-save').disabled = true;
+    document.getElementById('sc-title').value = clip.title;
+    document.getElementById('sc-desc').value = 'A short clip from the session: ' + clip.title + '. Learn how AI-driven content workflows help teams create, enrich and reuse video at scale.';
+    document.getElementById('sc-burn-captions').checked = false;
+    document.getElementById('sc-tags').innerHTML = ['Generative AI', 'Content strategy', 'Video workflows'].map(function (t) {
+      return '<span class="ds-tag">' + t + ' <button class="ds-tag-close" aria-label="Remove ' + t + '"><ds-icon name="close" size="16"></ds-icon></button></span>';
+    }).join('');
+    DS.openModal('save-clip-modal');
+    clearTimeout(scTimer);
+    scTimer = setTimeout(function () {
+      modal.querySelector('[data-sc-step="preparing"]').hidden = true;
+      modal.querySelector('[data-sc-step="form"]').hidden = false;
+      document.getElementById('sc-save').disabled = false;
+    }, 2000);
+  }
+  document.getElementById('save-clip-modal').addEventListener('ds-close', function () { clearTimeout(scTimer); });
+  document.getElementById('sc-tags').addEventListener('click', function (e) {
+    var x = e.target.closest('.ds-tag-close');
+    if (x) x.parentNode.remove();
+  });
 
   document.addEventListener('click', function (e) {
     var row = e.target.closest('[data-cc-clip]');
@@ -510,11 +554,26 @@
 
     if (e.target.closest('[data-clip-trim]')) openClipTrimmer(data.generatedClips[selectedClip]);
 
-    if (e.target.closest('[data-clip-save]')) {
+    if (e.target.closest('[data-clip-save]')) openSaveClipModal(data.generatedClips[selectedClip]);
+
+    if (e.target.closest('#sc-save')) {
       var saved = data.generatedClips[selectedClip];
+      saved.title = document.getElementById('sc-title').value || saved.title;
       saved.saved = true;
-      closePreview();
+      saved.processing = true;
+      if (saved.pending) { saved.pending = false; onClipsChanged(); }
+      DS.closeModal('save-clip-modal');
       renderGeneratedClips();
+      openClip(selectedClip);
+      if (kClip) kClip.pause();
+      // Prototype: processing finishes after a few seconds, then all clip options are available
+      setTimeout(function () {
+        saved.processing = false;
+        var i = data.generatedClips.indexOf(saved);
+        if (i === selectedClip && !preview.hidden) preview.classList.remove('app-pv-processing');
+        syncUrl();
+        DS.showToast({ type: 'success', message: 'Clip \u201c' + saved.title + '\u201d is ready' });
+      }, 6000);
       DS.showToast({ type: 'success', message: 'Clip \u201c' + saved.title + '\u201d saved in My Media' });
     }
 
@@ -523,7 +582,7 @@
       closePreview();
       renderGeneratedClips();
       updateClipsCardCount();
-      DS.showToast({ type: 'success', message: 'Draft \u201c' + gone.title + '\u201d deleted' });
+      if (!gone.pending) DS.showToast({ type: 'success', message: 'Draft \u201c' + gone.title + '\u201d deleted' });
     }
   });
   document.getElementById('clips-list').addEventListener('keydown', function (e) {
@@ -550,7 +609,10 @@
     var mode = main && main.getAttribute('data-pv-mode');
     if (mode === 'summary') return { page: 'summary' };
     if (mode === 'clips') return { page: 'chapters' };
-    if (mode === 'clip') return { page: 'clip', clip: selectedClip + 1 };
+    if (mode === 'clip') {
+      var sc = data.generatedClips[selectedClip];
+      return { page: 'clip', clip: selectedClip + 1, saved: sc && sc.saved ? (sc.processing ? 'processing' : '1') : '' };
+    }
     if (mode === 'trim') return { page: 'trim', clip: data.generatedClips.indexOf(trim.clip) + 1 };
     var view = drawer.querySelector('[data-view]:not([hidden])');
     return { page: view ? view.getAttribute('data-view') : 'menu' };
@@ -560,7 +622,7 @@
     clearTimeout(urlTimer);  // wait for the whole click to settle, then write the URL once
     urlTimer = setTimeout(function () {
       var p = currentPage(), q = new URLSearchParams();
-      if (p) { q.set('page', p.page); if (p.clip) q.set('clip', p.clip); }
+      if (p) { q.set('page', p.page); if (p.clip) q.set('clip', p.clip); if (p.saved) q.set('saved', p.saved); }
       var url = location.pathname + (p ? '?' + q.toString() : '');
       try { history.replaceState(null, '', url); } catch (err) { /* some browsers block this on file:// */ }
     }, 0);
@@ -573,6 +635,13 @@
     // Pages that need clips get the AI result straight away, with the form's default prompt
     if (/^(clips|clip|trim)$/.test(page) && !data.generatedClips.length) generateClips(readPrompt());
     n = Math.min(n, data.generatedClips.length - 1);
+    // ?saved=1 opens the clip as saved and ready; ?saved=processing as saved and still processing
+    var savedQ = q.get('saved');
+    if (savedQ && page === 'clip' && data.generatedClips[n]) {
+      data.generatedClips[n].saved = true;
+      data.generatedClips[n].processing = savedQ === 'processing';
+      renderGeneratedClips();
+    }
     if (page === 'clips-create' || page === 'clips') showView(page);
     else if (page === 'clips-loading') { showView('clips-create'); ccForm.requestSubmit(); }
     else if (page === 'summary' || page === 'chapters') {

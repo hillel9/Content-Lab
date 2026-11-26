@@ -4,9 +4,9 @@
    All behavior is event-delegated on `document`, so components
    added to the page later work with no init call.
 
-   Public API:   window.DS  { version, setTheme, getTheme, showToast, openModal, closeModal }
+   Public API:   window.DS  { version, setTheme, getTheme, showToast, openModal, closeModal, setProcessing }
    Custom events (bubble):
-     ds-change        select / tabs / segmented / switch / pagination   detail: { value, label }
+     ds-change        select / autocomplete / tabs / segmented / switch / pagination   detail: { value, label }
      ds-open          modal opened                                       detail: { id }
      ds-close         modal closed                                       detail: { id, reason: 'button' or 'api' }
      ds-theme-change  fired on document                                  detail: { theme }
@@ -251,6 +251,383 @@
       value: picked.map(function (p) { return p.value; }),
       label: picked.map(function (p) { return p.label; }).join(', ')
     });
+  });
+
+  /* ---------- autocomplete ----------
+     .ds-autocomplete > .ds-autocomplete-field (chips, input.ds-autocomplete-input, clear, chevron)
+                      + .ds-autocomplete-menu (button.ds-select-item[role=option] ..., .ds-autocomplete-empty)
+     Single value: picking fills the input. Multiple (.ds-autocomplete-multiple): picking toggles a
+     chip; the menu stays open. Typing filters options by label, unless the wrapper has
+     data-filter="none" (then the page fills the menu itself, listening to the input's `input` event).
+     Fires ds-change on the wrapper: single { value, label }, multiple { value: [..], label: 'a, b' }. */
+
+  var AC = '.ds-autocomplete';
+  var AC_OPEN = 'ds-autocomplete-open';
+  var acCount = 0;
+
+  function acParts(w) {
+    return {
+      field: w.querySelector('.ds-autocomplete-field'),
+      input: w.querySelector('.ds-autocomplete-input'),
+      menu: w.querySelector('.ds-autocomplete-menu'),
+      clear: w.querySelector('.ds-autocomplete-clear'),
+      more: w.querySelector('.ds-autocomplete-more')
+    };
+  }
+
+  function acMultiple(w) { return w.classList.contains('ds-autocomplete-multiple'); }
+
+  function acOptions(w, visibleOnly) {
+    var menu = w.querySelector('.ds-autocomplete-menu');
+    if (!menu) return [];
+    return toArray(menu.querySelectorAll('.ds-select-item[role="option"]')).filter(function (o) {
+      return !isDisabled(o) && (!visibleOnly || !o.hidden);
+    });
+  }
+
+  function acChips(w) {
+    return toArray(w.querySelectorAll('.ds-autocomplete-field > .ds-chip:not(.ds-autocomplete-more)'));
+  }
+
+  function acLabelOf(opt) { return textOf(opt.querySelector('.ds-select-item-label')); }
+
+  // give the input, menu and options the ids and ARIA a combobox needs (idempotent)
+  function acSetup(w) {
+    if (w._dsAc) return;
+    w._dsAc = true;
+    var p = acParts(w);
+    if (!p.input || !p.menu) return;
+    acCount += 1;
+    if (!p.menu.id) p.menu.id = 'ds-ac-menu-' + acCount;
+    p.menu.setAttribute('role', 'listbox');
+    if (acMultiple(w)) p.menu.setAttribute('aria-multiselectable', 'true');
+    p.input.setAttribute('role', 'combobox');
+    p.input.setAttribute('aria-autocomplete', 'list');
+    p.input.setAttribute('aria-controls', p.menu.id);
+    p.input.setAttribute('aria-expanded', 'false');
+    p.input.setAttribute('autocomplete', 'off');
+    acSyncSelected(w);
+  }
+
+  // multiple: options whose value has a chip are aria-selected
+  function acSyncSelected(w) {
+    if (!acMultiple(w)) return;
+    var values = acChips(w).map(function (c) { return c.getAttribute('data-value') || textOf(c); });
+    acOptions(w).forEach(function (o) {
+      var label = acLabelOf(o);
+      o.setAttribute('aria-selected', values.indexOf(valueOf(o, label)) >= 0 ? 'true' : 'false');
+    });
+  }
+
+  function acSetActive(w, opt) {
+    var p = acParts(w);
+    acOptions(w).forEach(function (o) { o.classList.remove('ds-autocomplete-active'); });
+    if (opt) {
+      acCount += 1;
+      if (!opt.id) opt.id = 'ds-ac-opt-' + acCount;
+      opt.classList.add('ds-autocomplete-active');
+      p.input.setAttribute('aria-activedescendant', opt.id);
+      opt.scrollIntoView({ block: 'nearest' });
+    } else {
+      p.input.removeAttribute('aria-activedescendant');
+    }
+  }
+
+  function acUpdateClear(w) {
+    var p = acParts(w);
+    if (!p.clear) return;
+    var hasValue = p.input.value !== '' || acChips(w).length > 0;
+    p.clear.hidden = !(hasValue && w.classList.contains(AC_OPEN));
+  }
+
+  function acFilter(w) {
+    var p = acParts(w);
+    if (!p.menu) return;
+    var q = p.input.value.trim().toLowerCase();
+    if (w.getAttribute('data-filter') !== 'none') {
+      acOptions(w).forEach(function (o) {
+        o.hidden = q !== '' && acLabelOf(o).toLowerCase().indexOf(q) < 0;
+      });
+    }
+    acSetActive(w, null);
+  }
+
+  function acOpen(w) {
+    var p = acParts(w);
+    if (!p.input || p.input.disabled || w.classList.contains(AC_OPEN)) return;
+    acSetup(w);
+    toArray(doc.querySelectorAll(AC + '.' + AC_OPEN)).forEach(function (o) { if (o !== w) acClose(o); });
+    w.classList.add(AC_OPEN);
+    p.input.setAttribute('aria-expanded', 'true');
+    acExpand(w);
+    // show every option when opening; typing narrows it down
+    if (w.getAttribute('data-filter') !== 'none') acOptions(w).forEach(function (o) { o.hidden = false; });
+    acUpdateClear(w);
+  }
+
+  function acClose(w) {
+    var p = acParts(w);
+    w.classList.remove(AC_OPEN);
+    if (p.input) p.input.setAttribute('aria-expanded', 'false');
+    acSetActive(w, null);
+    acUpdateClear(w);
+    if (acMultiple(w) && p.input) p.input.value = '';
+    acCollapse(w);
+  }
+
+  function acEmitMulti(w) {
+    var chips = acChips(w);
+    emit(w, 'ds-change', {
+      value: chips.map(function (c) { return c.getAttribute('data-value') || textOf(c); }),
+      label: chips.map(function (c) { return textOf(c); }).join(', ')
+    });
+  }
+
+  function acMakeChip(opt, label, value) {
+    var chip = doc.createElement('span');
+    chip.className = 'ds-chip';
+    chip.setAttribute('data-value', value);
+    var pic = opt.querySelector('.ds-autocomplete-picture');
+    if (pic) {
+      var img = doc.createElement('img');
+      img.className = 'ds-chip-picture';
+      img.src = pic.getAttribute('src');
+      img.alt = '';
+      chip.appendChild(img);
+    }
+    var content = doc.createElement('span');
+    content.className = 'ds-chip-content';
+    content.appendChild(doc.createTextNode(label));
+    var close = doc.createElement('button');
+    close.type = 'button';
+    close.className = 'ds-chip-close';
+    close.setAttribute('aria-label', 'Remove ' + label);
+    close.tabIndex = -1;
+    var icon = doc.createElement('ds-icon');
+    icon.setAttribute('name', 'close');
+    icon.setAttribute('size', '16');
+    close.appendChild(icon);
+    content.appendChild(close);
+    chip.appendChild(content);
+    return chip;
+  }
+
+  function acPick(w, opt) {
+    var p = acParts(w);
+    var label = acLabelOf(opt);
+    var value = valueOf(opt, label);
+    if (!acMultiple(w)) {
+      p.input.value = label;
+      acOptions(w).forEach(function (o) { o.setAttribute('aria-selected', o === opt ? 'true' : 'false'); });
+      acClose(w);
+      emit(w, 'ds-change', { value: value, label: label });
+      return;
+    }
+    var existing = acChips(w).filter(function (c) { return (c.getAttribute('data-value') || textOf(c)) === value; })[0];
+    if (existing) existing.remove();
+    else p.field.insertBefore(acMakeChip(opt, label, value), p.more || p.input);
+    acSyncSelected(w);
+    if (p.input.value !== '') {
+      // ready to type the next value: clear the text and show every option again
+      p.input.value = '';
+      acFilter(w);
+    }
+    acUpdateClear(w);
+    p.input.focus();
+    acEmitMulti(w);
+  }
+
+  function acRemoveChip(w, chip) {
+    chip.remove();
+    acSyncSelected(w);
+    acUpdateClear(w);
+    acCollapse(w);
+    acEmitMulti(w);
+  }
+
+  function acClear(w) {
+    var p = acParts(w);
+    p.input.value = '';
+    if (acMultiple(w)) {
+      acChips(w).forEach(function (c) { c.remove(); });
+      acSyncSelected(w);
+      acEmitMulti(w);
+    } else {
+      acOptions(w).forEach(function (o) { o.setAttribute('aria-selected', 'false'); });
+      emit(w, 'ds-change', { value: '', label: '' });
+    }
+    acFilter(w);
+    acUpdateClear(w);
+    p.input.focus();
+  }
+
+  // While in use the field wraps and shows every chip.
+  function acExpand(w) {
+    acChips(w).forEach(function (c) { c.classList.remove('ds-autocomplete-chip-hidden'); });
+    var more = acParts(w).more;
+    if (more) more.classList.remove('ds-autocomplete-more-shown');
+  }
+
+  // Not in use: one row; chips that don't fit are hidden behind a "+N" counter with a hint listing them.
+  function acCollapse(w) {
+    if (!acMultiple(w) || w.classList.contains(AC_OPEN)) return;
+    var p = acParts(w);
+    var chips = acChips(w);
+    acExpand(w);
+    if (!p.field || !chips.length || !isVisible(p.field)) return;
+    var more = p.more;
+    if (!more) {
+      more = doc.createElement('span');
+      more.className = 'ds-chip ds-autocomplete-more ds-hint-trigger';
+      more.innerHTML = '<span class="ds-chip-content"></span>' +
+        '<div class="ds-hint ds-hint-top"><div class="ds-hint-body"></div>' +
+        '<div class="ds-hint-arrow"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M0 0L5.4 7Q7 9 8.6 7L14 0Z" fill="currentColor"/></svg></div></div>';
+      p.field.insertBefore(more, p.input);
+    }
+    // room on the first row = field width minus the input's minimum and the icons on the right
+    var fieldBox = p.field.getBoundingClientRect();
+    var styles = getComputedStyle(p.field);
+    var gap = parseFloat(styles.columnGap) || 0;
+    var limit = fieldBox.right - parseFloat(styles.paddingRight) - parseFloat(styles.borderRightWidth);
+    toArray(p.field.children).forEach(function (el) {
+      if (el.matches('.ds-autocomplete-clear, .ds-autocomplete-chevron') && !el.hidden) limit -= el.getBoundingClientRect().width + gap;
+    });
+    limit -= (parseFloat(getComputedStyle(p.input).minWidth) || 0) + gap;
+    // measure the counter at its widest likely size, then keep as many chips as fit before it
+    more.querySelector('.ds-chip-content').textContent = '+' + chips.length;
+    more.classList.add('ds-autocomplete-more-shown');
+    var counterRoom = more.getBoundingClientRect().width + gap;
+    var hidden = [];
+    if (chips[chips.length - 1].getBoundingClientRect().right > limit) {
+      var keep = 0;
+      while (keep < chips.length && chips[keep].getBoundingClientRect().right <= limit - counterRoom) keep += 1;
+      hidden = chips.slice(keep);
+    }
+    hidden.forEach(function (c) { c.classList.add('ds-autocomplete-chip-hidden'); });
+    if (!hidden.length) { more.classList.remove('ds-autocomplete-more-shown'); return; }
+    more.querySelector('.ds-chip-content').textContent = '+' + hidden.length;
+    more.querySelector('.ds-hint-body').textContent = hidden.map(function (c) { return textOf(c); }).join('\n');
+    more.setAttribute('aria-label', hidden.length + ' more: ' + hidden.map(function (c) { return textOf(c); }).join(', '));
+  }
+
+  function acCollapseAll() {
+    toArray(doc.querySelectorAll(AC + '.ds-autocomplete-multiple')).forEach(function (w) { acSetup(w); acCollapse(w); });
+  }
+
+  // collapse existing ones when the page is ready, new ones as they are added, and all on resize
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', acCollapseAll);
+  else setTimeout(acCollapseAll, 0);
+  doc.addEventListener('ds-icons-ready', acCollapseAll);
+  var acResizeQueued = false;
+  window.addEventListener('resize', function () {
+    if (acResizeQueued) return;
+    acResizeQueued = true;
+    requestAnimationFrame(function () { acResizeQueued = false; acCollapseAll(); });
+  });
+  if (window.MutationObserver) {
+    new MutationObserver(function (records) {
+      var found = false;
+      records.forEach(function (r) {
+        toArray(r.addedNodes).forEach(function (n) {
+          if (n.nodeType === 1 && (n.matches(AC) || n.querySelector(AC))) found = true;
+        });
+      });
+      if (found) acCollapseAll();
+    }).observe(doc.documentElement, { childList: true, subtree: true });
+  }
+
+  doc.addEventListener('focusin', function (e) {
+    var input = e.target;
+    if (input.matches && input.matches('.ds-autocomplete-input')) acOpen(input.closest(AC));
+  });
+
+  doc.addEventListener('mousedown', function (e) {
+    var t = e.target;
+    if (!t.closest) return;
+    var w = t.closest(AC);
+    // keep focus in the input when using the menu, chips or icons
+    if (w && !t.matches('.ds-autocomplete-input') && t.closest('.ds-autocomplete-field, .ds-autocomplete-menu')) {
+      if (!t.closest('.ds-autocomplete-retry')) e.preventDefault();
+    }
+  });
+
+  doc.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t.closest) return;
+    var w = t.closest(AC);
+    // close other open autocompletes
+    toArray(doc.querySelectorAll(AC + '.' + AC_OPEN)).forEach(function (o) { if (o !== w) acClose(o); });
+    if (!w) return;
+    var p = acParts(w);
+    if (!p.input || p.input.disabled) return;
+
+    var chipClose = t.closest('.ds-chip-close');
+    if (chipClose && p.field.contains(chipClose)) { acRemoveChip(w, chipClose.closest('.ds-chip')); return; }
+    if (t.closest('.ds-autocomplete-clear')) { acClear(w); return; }
+
+    var opt = t.closest('.ds-autocomplete-menu .ds-select-item[role="option"]');
+    if (opt) { if (!isDisabled(opt)) acPick(w, opt); return; }
+
+    if (t.closest('.ds-autocomplete-chevron')) {
+      if (w.classList.contains(AC_OPEN)) acClose(w);
+      else { acOpen(w); p.input.focus(); }
+      return;
+    }
+    if (t.closest('.ds-autocomplete-field')) {
+      p.input.focus();
+      acOpen(w);
+    }
+  });
+
+  doc.addEventListener('input', function (e) {
+    var input = e.target;
+    if (!input.matches || !input.matches('.ds-autocomplete-input')) return;
+    var w = input.closest(AC);
+    acOpen(w);
+    acFilter(w);
+    acUpdateClear(w);
+  });
+
+  doc.addEventListener('keydown', function (e) {
+    var input = e.target;
+    if (!input.matches || !input.matches('.ds-autocomplete-input')) return;
+    var w = input.closest(AC);
+    var key = e.key;
+    var open = w.classList.contains(AC_OPEN);
+
+    if (key === 'Escape') {
+      if (open) {
+        acClose(w);
+        e.preventDefault(); // used here, so an enclosing modal ignores it
+      }
+      return;
+    }
+    if (key === 'ArrowDown' || key === 'ArrowUp' || ((key === 'Home' || key === 'End') && open)) {
+      e.preventDefault();
+      if (!open) acOpen(w);
+      var items = acOptions(w, true);
+      if (!items.length) return;
+      var i = items.indexOf(w.querySelector('.ds-autocomplete-active'));
+      if (i < 0) i = key === 'ArrowUp' ? 0 : -1;
+      acSetActive(w, items[stepIndex(key, i, items.length)]);
+      return;
+    }
+    if (key === 'Enter' && open) {
+      var active = w.querySelector('.ds-autocomplete-active');
+      if (active) { e.preventDefault(); acPick(w, active); }
+      return;
+    }
+    if (key === 'Backspace' && acMultiple(w) && input.value === '' && input.selectionStart === 0) {
+      var chips = acChips(w);
+      if (chips.length) { e.preventDefault(); acRemoveChip(w, chips[chips.length - 1]); }
+    }
+  });
+
+  doc.addEventListener('focusout', function (e) {
+    var input = e.target;
+    if (!input.matches || !input.matches('.ds-autocomplete-input')) return;
+    var w = input.closest(AC);
+    if (!e.relatedTarget || !w.contains(e.relatedTarget)) acClose(w);
   });
 
   /* ---------- tabs + segmented control (same pattern) ---------- */
@@ -559,14 +936,36 @@
     (items[0] || dialog).focus();
   });
 
+  /* ---------- button processing ----------
+     A .ds-btn with .ds-btn-processing or aria-busy="true" shows a spinner
+     (CSS). Block its clicks here too, so Enter/Space and page listeners
+     don't run while it works. Capture phase runs before the page's own. */
+  var PROCESSING = '.ds-btn.ds-btn-processing, .ds-btn[aria-busy="true"]';
+  doc.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest(PROCESSING)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, true);
+
+  function setProcessing(btn, on) {
+    if (typeof btn === 'string') btn = doc.getElementById(btn);
+    if (!btn) return;
+    on = on !== false;
+    btn.classList.toggle('ds-btn-processing', on);
+    if (on) btn.setAttribute('aria-busy', 'true');
+    else btn.removeAttribute('aria-busy');
+  }
+
   /* ---------- public API ---------- */
 
   window.DS = {
-    version: '1.1.0',
+    version: '1.2.0',
     setTheme: setTheme,
     getTheme: getTheme,
     showToast: showToast,
     openModal: openModal,
-    closeModal: closeModal
+    closeModal: closeModal,
+    setProcessing: setProcessing
   };
 })();
