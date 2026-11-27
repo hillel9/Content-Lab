@@ -856,7 +856,7 @@ body {
   padding: 0 var(--ds-space-8) var(--ds-space-8);
 }
 
-.app-cc-form .ds-form-field {
+.app-cc-form .ds-composed-input {
   margin-bottom: var(--ds-space-6);
 }
 
@@ -1145,7 +1145,7 @@ body {
   background: var(--ds-tone-5);
 }
 
-.app-cc-reuse .ds-hint-body {
+.app-cc-reuse .ds-tooltip-body {
   white-space: nowrap;
 }
 

@@ -441,10 +441,10 @@
 
   function reuseButton(p) {
     var hint = 'Duration: ' + esc(p.duration) + '<br>Topic: ' + (p.instructions ? esc(p.instructions) : 'Top moments');
-    return '<span class="ds-hint-trigger app-cc-reuse">' +
+    return '<span class="ds-tooltip-trigger app-cc-reuse">' +
       '<button class="ds-tag" data-cc-reuse><ds-icon name="refresh" size="16"></ds-icon>Reuse prompt</button>' +
-      '<span class="ds-hint ds-hint-top"><span class="ds-hint-body">' + hint + '</span>' +
-        '<span class="ds-hint-arrow"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M0 0L5.4 7Q7 9 8.6 7L14 0Z" fill="currentColor"/></svg></span></span>' +
+      '<span class="ds-tooltip ds-tooltip-top"><span class="ds-tooltip-body">' + hint + '</span>' +
+        '<span class="ds-tooltip-arrow"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M0 0L5.4 7Q7 9 8.6 7L14 0Z" fill="currentColor"/></svg></span></span>' +
     '</span>';
   }
 

@@ -478,10 +478,10 @@
     var more = p.more;
     if (!more) {
       more = doc.createElement('span');
-      more.className = 'ds-chip ds-autocomplete-more ds-hint-trigger';
+      more.className = 'ds-chip ds-autocomplete-more ds-tooltip-trigger';
       more.innerHTML = '<span class="ds-chip-content"></span>' +
-        '<div class="ds-hint ds-hint-top"><div class="ds-hint-body"></div>' +
-        '<div class="ds-hint-arrow"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M0 0L5.4 7Q7 9 8.6 7L14 0Z" fill="currentColor"/></svg></div></div>';
+        '<div class="ds-tooltip ds-tooltip-top"><div class="ds-tooltip-body"></div>' +
+        '<div class="ds-tooltip-arrow"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M0 0L5.4 7Q7 9 8.6 7L14 0Z" fill="currentColor"/></svg></div></div>';
       p.field.insertBefore(more, p.input);
     }
     // room on the first row = field width minus the input's minimum and the icons on the right
@@ -506,7 +506,7 @@
     hidden.forEach(function (c) { c.classList.add('ds-autocomplete-chip-hidden'); });
     if (!hidden.length) { more.classList.remove('ds-autocomplete-more-shown'); return; }
     more.querySelector('.ds-chip-content').textContent = '+' + hidden.length;
-    more.querySelector('.ds-hint-body').textContent = hidden.map(function (c) { return textOf(c); }).join('\n');
+    more.querySelector('.ds-tooltip-body').textContent = hidden.map(function (c) { return textOf(c); }).join('\n');
     more.setAttribute('aria-label', hidden.length + ' more: ' + hidden.map(function (c) { return textOf(c); }).join(', '));
   }
 
@@ -634,7 +634,8 @@
 
   var GROUPS = [
     { item: '.ds-tab[role="tab"]',                   list: '[role="tablist"]',   attr: 'aria-selected' },
-    { item: '.ds-segmented-item[role="radio"]',      list: '[role="radiogroup"]', attr: 'aria-checked' }
+    // segmented buttons; .ds-segmented-item is the old name, kept so older prototypes keep working
+    { item: '.ds-segmented-item[role="radio"], .ds-segmented-button[role="radio"]', list: '[role="radiogroup"]', attr: 'aria-checked' }
   ];
 
   function selectInGroup(cfg, item, focus) {
@@ -670,18 +671,26 @@
     });
   });
 
-  /* ---------- switch ---------- */
+  /* ---------- switch ----------
+     button.ds-switch-track[role=switch][aria-checked] > span.ds-switch-thumb (KEP UI: track, thumb, checked).
+     The old ds-switch-handle and ds-switch-on / ds-switch-off classes still work; ds.js updates on/off only on
+     markup that already has them. */
 
   function setSwitch(btn, on) {
-    btn.classList.toggle('ds-switch-on', on);
-    btn.classList.toggle('ds-switch-off', !on);
     btn.setAttribute('aria-checked', String(on));
+    // old markup carries ds-switch-on / ds-switch-off: keep it in step, but never add them to new markup
+    if (btn.classList.contains('ds-switch-on') || btn.classList.contains('ds-switch-off')) {
+      btn.classList.toggle('ds-switch-on', on);
+      btn.classList.toggle('ds-switch-off', !on);
+    }
   }
 
   doc.addEventListener('click', function (e) {
     var btn = e.target.closest && e.target.closest('.ds-switch-track[role="switch"]');
-    if (!btn || btn.disabled) return;
-    var on = !btn.classList.contains('ds-switch-on');
+    if (!btn || isDisabled(btn)) return;
+    // state = aria-checked (KEP "checked"); older markup may only have the ds-switch-on class
+    var was = btn.hasAttribute('aria-checked') ? btn.getAttribute('aria-checked') === 'true' : btn.classList.contains('ds-switch-on');
+    var on = !was;
     setSwitch(btn, on);
     var content = btn.closest('.ds-switch, .ds-select-item');
     var label = textOf(content && content.querySelector('.ds-switch-label, .ds-select-item-label'));
@@ -727,10 +736,11 @@
   });
 
   /* ---------- toast ----------
-     DS.showToast(element)   clone a .ds-ack-floating and show it fixed at the top (stays until dismissed)
+     DS.showToast(element)   clone a .ds-alert-floating and show it fixed at the top (stays until dismissed)
      DS.showToast({ type: 'info'|'error'|'success'|'warning', message, linkText, linkHref, duration })
                              build one from options; duration in ms (default 5000, 0 = stay)
-     Markup trigger: <div class="ds-ack ds-ack-floating ds-ack-info" data-ds-toast>…</div>  */
+     Markup trigger: <div class="ds-alert ds-alert-floating ds-alert-info" data-ds-toast>…</div>
+     (old ds-ack… class names are still accepted, for older prototypes)  */
 
   var toastTimer = null;
 
@@ -748,23 +758,23 @@
   function buildToast(opts) {
     var type = ['info', 'error', 'success', 'warning'].indexOf(opts.type) >= 0 ? opts.type : 'info';
     var toast = doc.createElement('div');
-    toast.className = 'ds-ack ds-ack-floating ds-ack-' + type;
+    toast.className = 'ds-alert ds-alert-floating ds-alert-' + type;
 
     var text = doc.createElement('span');
-    text.className = 'ds-ack-text';
+    text.className = 'ds-alert-text';
     text.textContent = opts.message || '';
     toast.appendChild(text);
 
     if (opts.linkText) {
       var link = doc.createElement('a');
-      link.className = 'ds-ack-link';
+      link.className = 'ds-alert-link';
       link.href = opts.linkHref || '#';
       link.textContent = opts.linkText;
       toast.appendChild(link);
     }
 
     var dismiss = doc.createElement('button');
-    dismiss.className = 'ds-ack-dismiss';
+    dismiss.className = 'ds-alert-dismiss';
     dismiss.setAttribute('aria-label', 'Dismiss');
     var x = doc.createElement('ds-icon');
     x.setAttribute('name', 'clear');
@@ -802,7 +812,7 @@
   doc.addEventListener('click', function (e) {
     var t = e.target;
     if (!t.closest) return;
-    var dismiss = t.closest('.ds-toast-active .ds-ack-dismiss');
+    var dismiss = t.closest('.ds-toast-active .ds-ack-dismiss, .ds-toast-active .ds-alert-dismiss');
     if (dismiss) {
       e.stopPropagation();
       dismissToast(dismiss.closest('.ds-toast-active'));
@@ -936,6 +946,213 @@
     (items[0] || dialog).focus();
   });
 
+  /* ---------- breadcrumbs ----------
+     nav.ds-breadcrumbs > ol.ds-breadcrumbs-ol > li.ds-breadcrumbs-li (.ds-breadcrumb-item)
+                                               + li.ds-breadcrumbs-separator (chevron) ...
+     Like KEP UI: when the trail is wider than the nav, the first item stays, the middle
+     items collapse into a "..." button (Show more) and as many of the last items as fit
+     stay. Clicking "..." shows every item (the trail then wraps). Refits on resize and
+     when items change. Opt out with data-collapse="none" on the nav. */
+  var BC = '.ds-breadcrumbs';
+  var BC_GEN = 'data-ds-generated';
+
+  function bcFit(nav) {
+    var ol = nav.querySelector('.ds-breadcrumbs-ol');
+    if (!ol) return;
+    // undo the last fit
+    toArray(ol.querySelectorAll('[' + BC_GEN + ']')).forEach(function (n) { n.remove(); });
+    toArray(ol.children).forEach(function (n) { n.hidden = false; });
+    if (nav.classList.contains('ds-breadcrumbs-expanded') || nav.getAttribute('data-collapse') === 'none') return;
+    nav.classList.add('ds-breadcrumbs-measuring'); // nothing shrinks while measuring
+    bcCollapse(nav, ol);
+    nav.classList.remove('ds-breadcrumbs-measuring');
+  }
+
+  function bcCollapse(nav, ol) {
+    if (ol.scrollWidth <= ol.clientWidth + 1) return;
+
+    var items = toArray(ol.children).filter(function (n) { return n.matches('.ds-breadcrumbs-li'); });
+    if (items.length < 3) return;
+
+    // "..." after the first item, with its own separator in front
+    var sepSrc = ol.querySelector('.ds-breadcrumbs-separator');
+    var sep = sepSrc ? sepSrc.cloneNode(true) : doc.createElement('li');
+    sep.setAttribute(BC_GEN, '');
+    if (!sepSrc) { sep.className = 'ds-breadcrumbs-separator'; sep.setAttribute('aria-hidden', 'true'); }
+    var li = doc.createElement('li');
+    li.className = 'ds-breadcrumbs-li';
+    li.setAttribute(BC_GEN, '');
+    var more = doc.createElement('button');
+    more.type = 'button';
+    more.className = 'ds-breadcrumb-item ds-breadcrumbs-truncated';
+    more.setAttribute('aria-label', nav.getAttribute('data-expand-text') || 'Show more');
+    more.textContent = '...';
+    li.appendChild(more);
+    items[0].after(sep, li);
+
+    // hide middle items (each with the separator before it) until the rest fits
+    for (var i = 1; i < items.length - 1 && ol.scrollWidth > ol.clientWidth + 1; i++) {
+      items[i].hidden = true;
+      var prev = items[i].previousElementSibling;
+      if (prev && prev.matches('.ds-breadcrumbs-separator')) prev.hidden = true;
+    }
+  }
+
+  function bcFitAll() {
+    toArray(doc.querySelectorAll(BC)).forEach(bcFit);
+  }
+
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', bcFitAll);
+  else setTimeout(bcFitAll, 0);
+  doc.addEventListener('ds-icons-ready', bcFitAll);
+  if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(bcFitAll);
+  var bcResizeQueued = false;
+  window.addEventListener('resize', function () {
+    if (bcResizeQueued) return;
+    bcResizeQueued = true;
+    requestAnimationFrame(function () { bcResizeQueued = false; bcFitAll(); });
+  });
+  if (window.MutationObserver) {
+    new MutationObserver(function (records) {
+      var navs = [];
+      records.forEach(function (r) {
+        var changed = toArray(r.addedNodes).concat(toArray(r.removedNodes)).filter(function (n) {
+          return n.nodeType === 1 && !n.hasAttribute(BC_GEN);
+        });
+        if (!changed.length) return;
+        changed.forEach(function (n) {
+          if (n.isConnected && n.matches(BC)) navs.push(n);
+          else if (n.isConnected) toArray(n.querySelectorAll(BC)).forEach(function (x) { navs.push(x); });
+        });
+        // items added to or removed from an existing trail (not icons rendering inside it)
+        if (r.target.matches && r.target.matches('.ds-breadcrumbs-ol')) navs.push(r.target.closest(BC));
+      });
+      navs.filter(function (n, i) { return navs.indexOf(n) === i; }).forEach(bcFit);
+    }).observe(doc.documentElement, { childList: true, subtree: true });
+  }
+
+  // "..." shows every item and moves focus to the first one it revealed
+  doc.addEventListener('click', function (e) {
+    var more = e.target.closest ? e.target.closest('.ds-breadcrumbs-truncated') : null;
+    if (!more) return;
+    var nav = more.closest(BC);
+    var revealed = toArray(nav.querySelectorAll('.ds-breadcrumbs-li[hidden] .ds-breadcrumb-item'))[0];
+    nav.classList.add('ds-breadcrumbs-expanded');
+    bcFit(nav);
+    if (revealed && e.detail === 0) revealed.focus();
+  });
+
+  /* ---------- split button ----------
+     .ds-split-button > button.ds-split-button-action + button.ds-split-button-menu-toggle
+                      + div.ds-split-button-menu (button.ds-select-item[role=menuitem] ...)
+     Names follow KEP UI's SplitButton. The action button and the menu items are plain
+     buttons: the page listens for their click. ds.js only opens and closes the menu.
+     The menu can't open while the toggle is disabled or the action button is processing. */
+  var SB = '.ds-split-button';
+  var SB_OPEN = 'ds-split-button-open';
+
+  function sbParts(w) {
+    return {
+      action: w.querySelector('.ds-split-button-action'),
+      toggle: w.querySelector('.ds-split-button-menu-toggle'),
+      menu: w.querySelector('.ds-split-button-menu')
+    };
+  }
+
+  function sbItems(w) {
+    var menu = sbParts(w).menu;
+    if (!menu) return [];
+    return toArray(menu.querySelectorAll('[role="menuitem"]')).filter(function (el) {
+      return !isDisabled(el) && isVisible(el);
+    });
+  }
+
+  function sbClose(w, returnFocus) {
+    var toggle = sbParts(w).toggle;
+    w.classList.remove(SB_OPEN);
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', 'false');
+      if (returnFocus) toggle.focus();
+    }
+  }
+
+  function sbCloseAll(except) {
+    toArray(doc.querySelectorAll(SB + '.' + SB_OPEN)).forEach(function (w) {
+      if (w !== except) sbClose(w);
+    });
+  }
+
+  function sbOpen(w, focusItem) {
+    var p = sbParts(w);
+    if (!p.toggle || !p.menu || isDisabled(p.toggle)) return;
+    if (p.action && p.action.matches('.ds-btn-processing, [aria-busy="true"]')) return;
+    sbCloseAll(w);
+    w.classList.add(SB_OPEN);
+    p.toggle.setAttribute('aria-expanded', 'true');
+    if (focusItem) {
+      var items = sbItems(w);
+      var el = focusItem === 'last' ? items[items.length - 1] : items[0];
+      if (el) el.focus();
+    }
+  }
+
+  doc.addEventListener('click', function (e) {
+    var target = e.target;
+    if (!target.closest) return;
+    var w = target.closest(SB);
+    sbCloseAll(w);
+    if (!w) return;
+
+    if (target.closest('.ds-split-button-menu-toggle')) {
+      if (w.classList.contains(SB_OPEN)) sbClose(w);
+      else sbOpen(w, e.detail === 0 ? 'first' : null); // detail 0 = keyboard activation
+      return;
+    }
+    var item = target.closest('.ds-split-button-menu [role="menuitem"]');
+    if (item && !isDisabled(item)) sbClose(w, e.detail === 0);
+  });
+
+  doc.addEventListener('keydown', function (e) {
+    var key = e.key;
+    var w = e.target.closest ? e.target.closest(SB) : null;
+
+    if (key === 'Escape') {
+      if (e.defaultPrevented) return; // an open select already used it
+      var open = (w && w.classList.contains(SB_OPEN)) ? w : doc.querySelector(SB + '.' + SB_OPEN);
+      if (open) {
+        sbClose(open, true);
+        e.preventDefault(); // tells the modal handler this Escape was already used
+      }
+      return;
+    }
+    if (!w) return;
+
+    // ArrowDown / ArrowUp on either button opens the menu (like KEP)
+    if (e.target.matches('.ds-split-button-action, .ds-split-button-menu-toggle')) {
+      if (key === 'ArrowDown' || key === 'ArrowUp') {
+        e.preventDefault();
+        sbOpen(w, key === 'ArrowUp' ? 'last' : 'first');
+      }
+      return;
+    }
+
+    if (!w.classList.contains(SB_OPEN)) return;
+    if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Home' || key === 'End') {
+      var items = sbItems(w);
+      if (!items.length) return;
+      e.preventDefault();
+      var i = items.indexOf(doc.activeElement);
+      if (i < 0) i = key === 'ArrowUp' ? 0 : -1;
+      items[stepIndex(key, i, items.length)].focus();
+    }
+  });
+
+  // Tabbing out of an open split button closes its menu
+  doc.addEventListener('focusout', function (e) {
+    var w = e.target.closest ? e.target.closest(SB + '.' + SB_OPEN) : null;
+    if (w && e.relatedTarget && !w.contains(e.relatedTarget)) sbClose(w);
+  });
+
   /* ---------- button processing ----------
      A .ds-btn with .ds-btn-processing or aria-busy="true" shows a spinner
      (CSS). Block its clicks here too, so Enter/Space and page listeners
@@ -960,7 +1177,7 @@
   /* ---------- public API ---------- */
 
   window.DS = {
-    version: '1.2.0',
+    version: '1.3.0',
     setTheme: setTheme,
     getTheme: getTheme,
     showToast: showToast,

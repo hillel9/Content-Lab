@@ -92,11 +92,11 @@
         </div>
         <!-- Saved clip: status + clip options (replaces the draft tools) -->
         <div class="app-sv-options">
-          <p class="app-sv-status"><span class="ds-spinner ds-spinner-white" aria-hidden="true"></span>Your video will be fully ready soon</p>
+          <p class="app-sv-status"><span class="ds-loader ds-loader-white" aria-hidden="true"></span>Your video will be fully ready soon</p>
           <p class="app-sv-label">Clip options</p>
           <button class="app-sv-option"><ds-icon name="share"></ds-icon>Share &amp; Embed</button>
           <button class="app-sv-option app-sv-option-download"><ds-icon name="download"></ds-icon>Download</button>
-          <button class="app-sv-option app-sv-option-vertical" data-clip-ratio><span class="app-sv-ratio-idle"><ds-icon name="mobile"></ds-icon>Change ratio with AI</span><span class="app-sv-ratio-busy"><span class="ds-spinner ds-spinner-white" aria-hidden="true"></span>Changing ratio…</span></button>
+          <button class="app-sv-option app-sv-option-vertical" data-clip-ratio><span class="app-sv-ratio-idle"><ds-icon name="mobile"></ds-icon>Change ratio with AI</span><span class="app-sv-ratio-busy"><span class="ds-loader ds-loader-white" aria-hidden="true"></span>Changing ratio…</span></button>
           <button class="app-sv-option"><ds-icon name="external-link"></ds-icon>Go to entry</button>
         </div>
         <div class="app-pv-feedback">
@@ -169,7 +169,7 @@
         <form class="app-cc-form" id="clips-create-form">
           <p class="app-cc-intro">Turn the most interesting moments of your video a short clip</p>
 
-          <div class="ds-form-field">
+          <div class="ds-composed-input">
             <span class="ds-form-label" id="cc-duration-label">Clips duration (Estimated)</span>
             <div class="app-cc-options" role="radiogroup" aria-labelledby="cc-duration-label">
               <button type="button" class="app-cc-option" role="radio" aria-checked="true">≈30s</button>
@@ -179,8 +179,8 @@
             </div>
           </div>
 
-          <div class="ds-form-field">
-            <label class="ds-form-label" for="cc-instructions">Instructions (Optional) <span class="ds-form-counter" id="cc-counter">0/500</span></label>
+          <div class="ds-composed-input">
+            <label class="ds-form-label" for="cc-instructions">Instructions (Optional) <span class="ds-input-counter" id="cc-counter">0/500</span></label>
             <textarea class="ds-textarea" id="cc-instructions" maxlength="500" placeholder="Provide more details to match your desired outcome"></textarea>
             <div class="app-cc-prompts">
               <button type="button" class="ds-tag" data-cc-prompt><ds-icon name="add" size="16"></ds-icon>Key insights and takeaways</button>
@@ -189,13 +189,13 @@
             </div>
           </div>
 
-          <div class="ds-form-field">
+          <div class="ds-composed-input">
             <span class="ds-form-label app-cc-label-help">Choose language
-              <span class="ds-hint-trigger">
+              <span class="ds-tooltip-trigger">
                 <ds-icon class="app-cc-help" name="help" size="16" tabindex="0" aria-label="About language"></ds-icon>
-                <span class="ds-hint ds-hint-top">
-                  <span class="ds-hint-body">Language of the clip titles and captions</span>
-                  <span class="ds-hint-arrow"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M0 0L5.4 7Q7 9 8.6 7L14 0Z" fill="currentColor"/></svg></span>
+                <span class="ds-tooltip ds-tooltip-top">
+                  <span class="ds-tooltip-body">Language of the clip titles and captions</span>
+                  <span class="ds-tooltip-arrow"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M0 0L5.4 7Q7 9 8.6 7L14 0Z" fill="currentColor"/></svg></span>
                 </span>
               </span>
             </span>
@@ -322,19 +322,19 @@
           <p class="app-sc-preparing-text">Preparing your video</p>
         </div>
         <div data-sc-step="form" hidden>
-          <div class="ds-form-field">
+          <div class="ds-composed-input">
             <label class="ds-form-label" for="sc-title">Title</label>
             <input class="ds-input ds-input-md" id="sc-title">
           </div>
-          <div class="ds-form-field">
+          <div class="ds-composed-input">
             <label class="ds-form-label" for="sc-desc">Description (optional)</label>
             <textarea class="ds-textarea" id="sc-desc"></textarea>
           </div>
-          <div class="ds-form-field">
+          <div class="ds-composed-input">
             <label class="ds-form-label">Tags (optional)</label>
             <div class="app-sc-tags" id="sc-tags"></div>
           </div>
-          <div class="ds-form-field">
+          <div class="ds-composed-input">
             <label class="ds-form-label">Options</label>
             <label class="ds-checkbox">
               <input type="checkbox" class="ds-checkbox-input" id="sc-burn-captions">

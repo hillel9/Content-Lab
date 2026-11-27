@@ -2,7 +2,15 @@
    @ds/ui — Design System Styles
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
+/* Lato from Kaltura's font proxy (same URL as KEP UI): it hides the user's IP from Google, for GDPR. */
+@import url('https://fonts.kaltura.com/css2?family=Lato:wght@400;700&display=swap');
+
+/* ---- Names ----
+   Component names follow KEP UI (see the Terminology Index on index.html, tools/terminology.json).
+   Many rules below list two selectors for the same thing: the current name and an OLD name kept only so
+   older prototypes keep working. Old names: ds-ack*, ds-hint*, ds-user-picture*, ds-spinner*,
+   ds-segmented / ds-segmented-item, ds-form-field / -desc / -error / -counter, ds-switch-handle,
+   ds-switch-on / -off, --ds-accent. Never write them in new markup; use the current name on the same rule. */
 
 /* ---- Design Tokens ---- */
 :root {
@@ -18,18 +26,27 @@
   --ds-danger-brighter: #e33547;
   --ds-danger-text-contrast: #ffffff;
 
-  /* Acknowledgement */
-  --ds-warning: #E86925;
+  /* Acknowledgement (Figma "Acknowledgment" collection; dark values in the dark theme below) */
+  --ds-warning: #c2570a;
+  --ds-warning-darker: #914108;
+  --ds-warning-brighter: #f26c0d;
   --ds-warning-text-contrast: #ffffff;
   --ds-success: #23803a;
+  --ds-success-darker: #13441f;
+  --ds-success-brighter: #33bc55;
   --ds-success-text-contrast: #ffffff;
 
   /* Brand */
   --ds-stream-blue: #006EFA;
   --ds-screen-green: #00A078;
 
-  /* Accent (selected-tab indicator) */
-  --ds-accent: #ffaa00;
+  /* Secondary — the yellow-orange accent (Figma and KEP UI call it "Secondary";
+     not the grey .ds-btn-secondary button). Used for the selected-tab indicator. */
+  --ds-secondary: #ffaa00;
+  --ds-secondary-darker: #b37700;
+  --ds-secondary-brighter: #ffbb33;
+  --ds-secondary-text-contrast: #ffffff;
+  --ds-accent: var(--ds-secondary); /* old name, kept so prototypes keep working */
 
   /* Secondary text (menu item descriptions) */
   --ds-text-subtle: #888888;
@@ -56,22 +73,34 @@
   --ds-background: #ffffff;
   --ds-paper: #f5f5f5;
   --ds-elevated: #ffffff;
+  --ds-protection: #3d3d3d; /* Figma "Protection": dark surface that keeps text readable over media; same in dark theme */
 
   /* Opacity — Black */
+  --ds-b-10: rgba(0,0,0,0.1);
   --ds-b-20: rgba(0,0,0,0.2);
   --ds-b-30: rgba(0,0,0,0.3);
   --ds-b-40: rgba(0,0,0,0.4);
+  --ds-b-50: rgba(0,0,0,0.5);
   --ds-b-60: rgba(0,0,0,0.6);
   --ds-b-70: rgba(0,0,0,0.7);
+  --ds-b-80: rgba(0,0,0,0.8);
+  --ds-b-90: rgba(0,0,0,0.9);
   --ds-b-100: #000000;
 
   /* Opacity — White */
+  --ds-w-10: rgba(255,255,255,0.1);
   --ds-w-20: rgba(255,255,255,0.2);
+  --ds-w-30: rgba(255,255,255,0.3);
   --ds-w-40: rgba(255,255,255,0.4);
+  --ds-w-50: rgba(255,255,255,0.5);
   --ds-w-60: rgba(255,255,255,0.6);
   --ds-w-70: rgba(255,255,255,0.7);
   --ds-w-80: rgba(255,255,255,0.8);
+  --ds-w-90: rgba(255,255,255,0.9);
   --ds-w-100: #ffffff;
+
+  /* Backdrop behind modals (Figma "Backdrop", KEP palette.backdrop): #222222 at 60% */
+  --ds-backdrop: rgba(34,34,34,0.6);
 
   /* Hover Mode */
   --ds-hover-black: #000000;
@@ -80,9 +109,11 @@
   --ds-roundness-tiny: 3px;
   --ds-roundness-1: 4px;
   --ds-roundness-2: 8px;
-  --ds-roundness-3: 12px;
+  --ds-roundness-3: 16px;
 
-  /* Spacing — 4px base. space-N = N x 4px. Half steps use a dash: 1-5 = 1.5 x 4px = 6px. */
+  /* Spacing — 4px base. space-N = N x 4px. Half steps use a dash: 1-5 = 1.5 x 4px = 6px.
+     KEP UI (MUI) counts in 8px units: theme.spacing(n) = --ds-space-{2n}
+     (spacing(0.5) = space-1, spacing(1) = space-2, spacing(1.5) = space-3, spacing(2) = space-4, spacing(3) = space-6). */
   --ds-space-0-25: 1px;
   --ds-space-0-5: 2px;
   --ds-space-0-75: 3px;
@@ -103,7 +134,7 @@
   --ds-space-16: 64px;
 
   /* Typography */
-  --ds-font-family: 'Lato', sans-serif;
+  --ds-font-family: Lato, 'Helvetica Neue', 'Segoe UI', sans-serif; /* KEP UI's stack */
 
   --ds-font-size-1: 11px;
   --ds-font-size-2: 12px;
@@ -167,6 +198,23 @@
   --ds-background: #121212;
   --ds-paper: #242424;
   --ds-elevated: #333333;
+
+  /* Semantic colors swap in dark (Figma "Acknowledgment" Dark mode, KEP dark palette):
+     brighter values with black contrast text. Primary and secondary stay the same. */
+  --ds-danger: #e95e6c;
+  --ds-danger-darker: #db1e32;
+  --ds-danger-brighter: #f2a1a9;
+  --ds-danger-text-contrast: #000000;
+  --ds-danger-tint-10: rgba(233,94,108,0.1);
+  --ds-danger-tint-20: rgba(233,94,108,0.2);
+  --ds-success: #31b551;
+  --ds-success-darker: #268c3f;
+  --ds-success-brighter: #4ace6b;
+  --ds-success-text-contrast: #000000;
+  --ds-warning: #f26c0d;
+  --ds-warning-darker: #c2570a;
+  --ds-warning-brighter: #f58a3d;
+  --ds-warning-text-contrast: #000000;
 }
 
 /* ---- Global Typography ---- */
@@ -363,6 +411,161 @@ html, body {
 }
 
 /* ============================================
+   SplitButton
+   Names follow KEP UI's SplitButton: an action button, a menu toggle
+   button and a menu. Both buttons are regular .ds-btn, so size, color,
+   hover, disabled and processing come from Button.
+   ============================================ */
+.ds-split-button {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+.ds-split-button > .ds-btn { min-width: 0; }
+
+/* Action button: label (and optional 24px icon) */
+.ds-split-button-action {
+  gap: var(--ds-space-1);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.ds-split-button-action.ds-btn-md { padding: 0 var(--ds-space-2); }
+.ds-split-button-action.ds-btn-lg,
+.ds-split-button-action.ds-btn-xl { padding: 0 var(--ds-space-4); }
+
+/* Menu toggle button: 16px chevron, 1px divider on its left */
+.ds-split-button-menu-toggle {
+  padding: 0 var(--ds-space-2);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid var(--ds-primary-text-contrast);
+}
+.ds-split-button-menu-toggle.ds-btn-danger { border-left-color: var(--ds-danger-text-contrast); }
+.ds-split-button-menu-toggle.ds-btn-secondary { border-left: 1px solid var(--ds-background); }
+
+/* Focus: the focused half gets the brighter fill (Figma), no ring */
+.ds-split-button > .ds-btn-primary:focus-visible { outline: none; background: var(--ds-primary-brighter); }
+.ds-split-button > .ds-btn-danger:focus-visible { outline: none; background: var(--ds-danger-brighter); }
+
+/* Menu open: the toggle stays in its hover color */
+.ds-split-button-menu-toggle.ds-btn-primary[aria-expanded="true"] { background: var(--ds-primary-darker); }
+.ds-split-button-menu-toggle.ds-btn-danger[aria-expanded="true"] { background: var(--ds-danger-darker); }
+.ds-split-button-menu-toggle.ds-btn-secondary[aria-expanded="true"] { background: var(--ds-tone-5); }
+
+/* Disabled: one outline around both halves, tone-4 divider */
+.ds-split-button-action:disabled,
+.ds-split-button-action[aria-disabled="true"] { border-right: none; }
+.ds-split-button-menu-toggle.ds-btn:disabled,
+.ds-split-button-menu-toggle.ds-btn[aria-disabled="true"] { border-left: 1px solid var(--ds-tone-4); }
+
+/* Processing (action button busy): the toggle keeps its color but can't open */
+.ds-split-button-action.ds-btn-processing + .ds-split-button-menu-toggle,
+.ds-split-button-action[aria-busy="true"] + .ds-split-button-menu-toggle {
+  cursor: progress;
+  pointer-events: none;
+}
+
+/* Menu: same look as the select menu, opens below, aligned right */
+.ds-split-button .ds-split-button-menu {
+  position: absolute;
+  top: calc(100% + var(--ds-space-1));
+  right: 0;
+  z-index: var(--ds-z-dropdown);
+  display: none;
+  width: max-content;
+  min-width: 180px;
+  max-width: 320px;
+}
+.ds-split-button.ds-split-button-open .ds-split-button-menu { display: block; }
+
+/* ============================================
+   Breadcrumbs
+   Look from the Figma Platform DS "Breadcrumb Item" states (Default, Hover,
+   Active, Disable, Truncated); names from KEP UI's Breadcrumbs (breadcrumb
+   item, separator, active, collapsed "..."). ds.js collapses the middle
+   items into "..." when the trail is wider than its container.
+   ============================================ */
+.ds-breadcrumbs {
+  display: block;
+  min-width: 0;
+}
+.ds-breadcrumbs-ol {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+}
+.ds-breadcrumbs-expanded .ds-breadcrumbs-ol { flex-wrap: wrap; }
+.ds-breadcrumbs-li,
+.ds-breadcrumbs-measuring .ds-breadcrumbs-li:last-child { display: flex; flex-shrink: 0; }
+/* only the last item shrinks (ellipsis) once nothing else can collapse */
+.ds-breadcrumbs-li:last-child { flex-shrink: 1; min-width: 0; }
+.ds-breadcrumbs-li[hidden],
+.ds-breadcrumbs-separator[hidden] { display: none; }
+
+/* Separator: 16px chevron, tone-2 (mirrored in RTL) */
+.ds-breadcrumbs-separator {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--ds-tone-2);
+}
+[dir="rtl"] .ds-breadcrumbs-separator ds-icon { transform: scaleX(-1); }
+
+/* Breadcrumb item: a link (<a href>), a button, or plain text (<span>) */
+.ds-breadcrumb-item {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-4);
+  font-weight: var(--ds-font-weight-bold);
+  line-height: var(--ds-line-height-18);
+  color: var(--ds-tone-2);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: default;
+}
+a.ds-breadcrumb-item[href],
+button.ds-breadcrumb-item { cursor: pointer; }
+a.ds-breadcrumb-item[href]:hover,
+button.ds-breadcrumb-item:hover { color: var(--ds-primary); }
+.ds-breadcrumb-item:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
+  border-radius: var(--ds-roundness-1);
+}
+
+/* Active: the current page */
+.ds-breadcrumb-item[aria-current="page"],
+.ds-breadcrumb-item.ds-breadcrumb-item-active,
+.ds-breadcrumb-item[aria-current="page"]:hover,
+.ds-breadcrumb-item.ds-breadcrumb-item-active:hover { color: var(--ds-primary-brighter); }
+
+/* Disabled */
+.ds-breadcrumb-item[aria-disabled="true"],
+.ds-breadcrumb-item:disabled {
+  color: var(--ds-tone-4);
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Truncated: the "..." that stands for the collapsed items */
+.ds-breadcrumbs-truncated {
+  color: var(--ds-tone-3);
+  cursor: pointer;
+}
+.ds-breadcrumbs-truncated:hover { color: var(--ds-primary); }
+
+/* ============================================
    Input
    ============================================ */
 .ds-input {
@@ -484,12 +687,25 @@ html, body {
   display: block;
 }
 
-/* Disabled */
+/* Hover (Figma): unchecked = tone-6 fill and tone-4 border; checked or partial = primary-darker */
+.ds-checkbox:hover .ds-checkbox-input:not(:disabled):not(:checked):not(:indeterminate) + .ds-checkbox-indicator {
+  background: var(--ds-tone-6);
+  border-color: var(--ds-tone-4);
+}
+.ds-checkbox:hover .ds-checkbox-input:not(:disabled):checked + .ds-checkbox-indicator,
+.ds-checkbox:hover .ds-checkbox-input:not(:disabled):indeterminate + .ds-checkbox-indicator {
+  background: var(--ds-primary-darker);
+  border-color: var(--ds-primary-darker);
+}
+
+/* Disabled (Figma): tone-7 fill, tone-4 border; checked/partial keep the mark in tone-4 */
 .ds-checkbox-input:disabled + .ds-checkbox-indicator {
   background: var(--ds-tone-7);
   border-color: var(--ds-tone-4);
   cursor: not-allowed;
 }
+.ds-checkbox-input:disabled:indeterminate + .ds-checkbox-indicator { background: var(--ds-tone-8); }
+.ds-checkbox-input:disabled + .ds-checkbox-indicator svg path { stroke: var(--ds-tone-4); }
 .ds-checkbox-input:disabled ~ .ds-checkbox-label {
   color: var(--ds-tone-4);
   cursor: not-allowed;
@@ -542,9 +758,9 @@ html, body {
 .ds-radio-indicator::after {
   content: '';
   display: block;
-  width: 8px;
-  height: 8px;
-  background: var(--ds-w-100);
+  width: 6px;
+  height: 6px;
+  background: var(--ds-primary-text-contrast);
   border-radius: 50%;
   opacity: 0;
   transition: opacity var(--ds-duration-base);
@@ -559,12 +775,23 @@ html, body {
   opacity: 1;
 }
 
-/* Disabled */
+/* Hover (Figma): unchecked = primary border; checked = primary-darker */
+.ds-radio:hover .ds-radio-input:not(:disabled):not(:checked) + .ds-radio-indicator {
+  border-color: var(--ds-primary);
+}
+.ds-radio:hover .ds-radio-input:not(:disabled):checked + .ds-radio-indicator {
+  background: var(--ds-primary-darker);
+  border-color: var(--ds-primary-darker);
+}
+
+/* Disabled (Figma): unchecked = tone-6 fill, tone-4 border; checked = tone-4 ring with a tone-8 dot */
 .ds-radio-input:disabled + .ds-radio-indicator {
-  background: var(--ds-tone-7);
+  background: var(--ds-tone-6);
   border-color: var(--ds-tone-4);
   cursor: not-allowed;
 }
+.ds-radio-input:disabled:checked + .ds-radio-indicator { background: var(--ds-tone-4); }
+.ds-radio-input:disabled:checked + .ds-radio-indicator::after { background: var(--ds-tone-8); }
 .ds-radio-input:disabled ~ .ds-radio-label {
   color: var(--ds-tone-4);
   cursor: not-allowed;
@@ -606,28 +833,75 @@ html, body {
 .ds-switch-lg { width: 44px; height: 24px; }
 
 /* States */
-.ds-switch-off { background: var(--ds-tone-3); }
-.ds-switch-on { background: var(--ds-primary); }
+.ds-switch-off,
+.ds-switch-track:where([aria-checked="false"]) { background: var(--ds-tone-3); }
+.ds-switch-on,
+.ds-switch-track:where([aria-checked="true"]) { background: var(--ds-primary); }
 
-.ds-switch-handle {
+.ds-switch-handle,
+.ds-switch-thumb {
   position: absolute;
   top: 2px;
   background: var(--ds-w-100);
   border-radius: 50%;
   transition: all var(--ds-duration-base);
 }
-.ds-switch-sm .ds-switch-handle { width: 12px; height: 12px; }
-.ds-switch-lg .ds-switch-handle { width: 20px; height: 20px; }
+.ds-switch-sm .ds-switch-handle,
+.ds-switch-sm .ds-switch-thumb { width: 12px; height: 12px; }
+.ds-switch-lg .ds-switch-handle,
+.ds-switch-lg .ds-switch-thumb { width: 20px; height: 20px; }
 
-.ds-switch-off .ds-switch-handle { left: 2px; }
-.ds-switch-on.ds-switch-sm .ds-switch-handle { left: 18px; }
-.ds-switch-on.ds-switch-lg .ds-switch-handle { left: 22px; }
+.ds-switch-off .ds-switch-handle,
+.ds-switch-track:where([aria-checked="false"]) .ds-switch-handle,
+.ds-switch-off .ds-switch-thumb,
+.ds-switch-track:where([aria-checked="false"]) .ds-switch-thumb { left: 2px; }
+.ds-switch-on.ds-switch-sm .ds-switch-handle,
+.ds-switch-track:where([aria-checked="true"]).ds-switch-sm .ds-switch-handle,
+.ds-switch-on.ds-switch-sm .ds-switch-thumb,
+.ds-switch-track:where([aria-checked="true"]).ds-switch-sm .ds-switch-thumb { left: 18px; }
+.ds-switch-on.ds-switch-lg .ds-switch-handle,
+.ds-switch-track:where([aria-checked="true"]).ds-switch-lg .ds-switch-handle,
+.ds-switch-on.ds-switch-lg .ds-switch-thumb,
+.ds-switch-track:where([aria-checked="true"]).ds-switch-lg .ds-switch-thumb { left: 22px; }
 
-/* Disabled */
-.ds-switch-track:disabled {
-  opacity: var(--ds-opacity-disabled);
+/* Disabled (Figma: solid colors, no fade) — off tone-4, on tone-3, white handle */
+.ds-switch-track:disabled,
+.ds-switch-track[aria-disabled="true"] {
   cursor: not-allowed;
+  pointer-events: none;
 }
+.ds-switch-off:disabled,
+.ds-switch-off[aria-disabled="true"],
+.ds-switch-track:where([aria-checked="false"]):disabled,
+.ds-switch-track:where([aria-checked="false"])[aria-disabled="true"] { background: var(--ds-tone-4); }
+.ds-switch-on:disabled,
+.ds-switch-on[aria-disabled="true"],
+.ds-switch-track:where([aria-checked="true"]):disabled,
+.ds-switch-track:where([aria-checked="true"])[aria-disabled="true"] { background: var(--ds-tone-3); }
+
+/* Translucent — for switches on images or video (Figma Mode=Translucent,
+   KEP "translucent" color). Off: black 40%; on: primary.
+   Disabled off: black 20% with a 40% white handle; disabled on: white 40%. */
+.ds-switch-translucent.ds-switch-off,
+.ds-switch-translucent.ds-switch-track:where([aria-checked="false"]) { background: var(--ds-b-40); }
+.ds-switch-translucent.ds-switch-on,
+.ds-switch-translucent.ds-switch-track:where([aria-checked="true"]) { background: var(--ds-primary); }
+.ds-switch-translucent.ds-switch-off:disabled,
+.ds-switch-translucent.ds-switch-off[aria-disabled="true"],
+.ds-switch-translucent.ds-switch-track:where([aria-checked="false"]):disabled,
+.ds-switch-translucent.ds-switch-track:where([aria-checked="false"])[aria-disabled="true"] { background: var(--ds-b-20); }
+.ds-switch-translucent.ds-switch-off:disabled .ds-switch-handle,
+.ds-switch-translucent.ds-switch-off[aria-disabled="true"] .ds-switch-handle,
+.ds-switch-translucent.ds-switch-track:where([aria-checked="false"]):disabled .ds-switch-handle,
+.ds-switch-translucent.ds-switch-off:disabled .ds-switch-thumb,
+.ds-switch-translucent.ds-switch-track:where([aria-checked="false"]):disabled .ds-switch-thumb,
+.ds-switch-translucent.ds-switch-track:where([aria-checked="false"])[aria-disabled="true"] .ds-switch-handle,
+.ds-switch-translucent.ds-switch-off[aria-disabled="true"] .ds-switch-thumb,
+.ds-switch-translucent.ds-switch-track:where([aria-checked="false"])[aria-disabled="true"] .ds-switch-thumb { background: var(--ds-w-40); }
+.ds-switch-translucent.ds-switch-on:disabled,
+.ds-switch-translucent.ds-switch-on[aria-disabled="true"],
+.ds-switch-translucent.ds-switch-track:where([aria-checked="true"]):disabled,
+.ds-switch-translucent.ds-switch-track:where([aria-checked="true"])[aria-disabled="true"] { background: var(--ds-w-40); }
 
 .ds-switch-content {
   display: flex;
@@ -646,7 +920,8 @@ html, body {
 /* ============================================
    FormField
    ============================================ */
-.ds-form-field {
+.ds-form-field,
+.ds-composed-input {
   margin-bottom: var(--ds-space-5);
 }
 .ds-form-label {
@@ -659,19 +934,22 @@ html, body {
   margin-bottom: var(--ds-space-1);
   color: var(--ds-tone-1);
 }
-.ds-form-counter {
+.ds-form-counter,
+.ds-input-counter {
   font-weight: var(--ds-font-weight-regular);
   color: var(--ds-tone-2);
   margin-left: auto;
 }
-.ds-form-desc {
+.ds-form-desc,
+.ds-form-additional-info {
   font-family: var(--ds-font-family);
   font-size: var(--ds-font-size-3);
   font-weight: var(--ds-font-weight-bold);
   color: var(--ds-tone-2);
   margin: 0 0 var(--ds-space-1);
 }
-.ds-form-error {
+.ds-form-error,
+.ds-form-helper-text-error {
   font-family: var(--ds-font-family);
   font-size: var(--ds-font-size-4);
   color: var(--ds-danger);
@@ -941,7 +1219,8 @@ html, body {
 .ds-autocomplete-field .ds-autocomplete-more.ds-autocomplete-more-shown { display: inline-flex; }
 .ds-autocomplete-more .ds-chip-content { padding: 0 var(--ds-space-1-5); }
 .ds-autocomplete-chip-hidden { display: none !important; }
-.ds-autocomplete-more .ds-hint-body { white-space: pre-line; }
+.ds-autocomplete-more .ds-hint-body,
+.ds-autocomplete-more .ds-tooltip-body { white-space: pre-line; }
 
 /* -- Clear (x) and chevron, pushed to the right -- */
 .ds-autocomplete-clear,
@@ -1096,7 +1375,7 @@ html, body {
 
 /* Current / selected tab */
 .ds-tab[aria-selected="true"] {
-  border-bottom-color: var(--ds-accent);
+  border-bottom-color: var(--ds-secondary);
 }
 
 /* Disabled */
@@ -1129,7 +1408,8 @@ html, body {
 /* ============================================
    Segmented Control
    ============================================ */
-.ds-segmented {
+.ds-segmented,
+.ds-segmented-container {
   display: inline-flex;
   align-items: center;
   gap: var(--ds-space-0-5);
@@ -1138,7 +1418,8 @@ html, body {
   border-radius: var(--ds-roundness-1);
 }
 
-.ds-segmented-item {
+.ds-segmented-item,
+.ds-segmented-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1160,32 +1441,38 @@ html, body {
 }
 
 /* Hover */
-.ds-segmented-item:hover {
+.ds-segmented-item:hover,
+.ds-segmented-button:hover {
   background: var(--ds-tone-5);
 }
 
 /* Focus */
-.ds-segmented-item:focus-visible {
+.ds-segmented-item:focus-visible,
+.ds-segmented-button:focus-visible {
   background: var(--ds-tone-4);
   outline: 2px solid var(--ds-primary);
   outline-offset: -2px;
 }
 
 /* Selected */
-.ds-segmented-item[aria-checked="true"] {
+.ds-segmented-item[aria-checked="true"],
+.ds-segmented-button[aria-checked="true"] {
   background: var(--ds-tone-8);
 }
-.ds-segmented-item[aria-checked="true"]:hover {
+.ds-segmented-item[aria-checked="true"]:hover,
+.ds-segmented-button[aria-checked="true"]:hover {
   background: var(--ds-tone-8);
 }
 
 /* Disabled */
-.ds-segmented-item:disabled {
+.ds-segmented-item:disabled,
+.ds-segmented-button:disabled {
   color: var(--ds-tone-4);
   cursor: not-allowed;
   pointer-events: none;
 }
-.ds-segmented-item:disabled svg {
+.ds-segmented-item:disabled svg,
+.ds-segmented-button:disabled svg {
   color: var(--ds-tone-4);
 }
 
@@ -1480,7 +1767,8 @@ html, body {
 /* ============================================
    User Picture
    ============================================ */
-.ds-user-picture {
+.ds-user-picture,
+.ds-initials {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1495,25 +1783,29 @@ html, body {
 }
 
 /* Sizes */
-.ds-user-picture-sm {
+.ds-user-picture-sm,
+.ds-initials-sm {
   width: 24px;
   height: 24px;
   border-radius: var(--ds-roundness-1);
   font-size: var(--ds-font-size-1);
 }
-.ds-user-picture-md {
+.ds-user-picture-md,
+.ds-initials-md {
   width: 36px;
   height: 36px;
   border-radius: var(--ds-roundness-1);
   font-size: var(--ds-font-size-4);
 }
-.ds-user-picture-lg {
+.ds-user-picture-lg,
+.ds-initials-lg {
   width: 48px;
   height: 48px;
   border-radius: var(--ds-roundness-1);
   font-size: var(--ds-font-size-6);
 }
-.ds-user-picture-xl {
+.ds-user-picture-xl,
+.ds-initials-xl {
   width: 96px;
   height: 96px;
   border-radius: var(--ds-roundness-2);
@@ -1521,12 +1813,14 @@ html, body {
 }
 
 /* Shape — round */
-.ds-user-picture-round {
+.ds-user-picture-round,
+.ds-initials-round {
   border-radius: 50%;
 }
 
 /* Image mode — remove background, let img fill */
-.ds-user-picture img {
+.ds-user-picture img,
+.ds-initials img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1538,7 +1832,8 @@ html, body {
    ============================================ */
 
 /* ---- Acknowledgement ---- */
-.ds-ack {
+.ds-ack,
+.ds-alert {
   display: flex;
   align-items: center;
   gap: var(--ds-space-2);
@@ -1551,23 +1846,27 @@ html, body {
   color: var(--ds-tone-1);
 }
 
-.ds-ack-icon {
+.ds-ack-icon,
+.ds-alert-icon {
   flex-shrink: 0;
   width: 24px;
   height: 24px;
 }
-.ds-ack-icon svg {
+.ds-ack-icon svg,
+.ds-alert-icon svg {
   width: 24px;
   height: 24px;
   display: block;
 }
 
-.ds-ack-text {
+.ds-ack-text,
+.ds-alert-text {
   font-weight: var(--ds-font-weight-regular);
   white-space: nowrap;
 }
 
-.ds-ack-link {
+.ds-ack-link,
+.ds-alert-link {
   font-weight: var(--ds-font-weight-bold);
   text-decoration: underline;
   text-decoration-skip-ink: none;
@@ -1576,7 +1875,8 @@ html, body {
   cursor: pointer;
 }
 
-.ds-ack-dismiss {
+.ds-ack-dismiss,
+.ds-alert-dismiss {
   flex-shrink: 0;
   width: 24px;
   height: 24px;
@@ -1588,39 +1888,55 @@ html, body {
   align-items: center;
   justify-content: center;
 }
-.ds-ack-dismiss svg {
+.ds-ack-dismiss svg,
+.ds-alert-dismiss svg {
   width: 24px;
   height: 24px;
   display: block;
 }
 
 /* Inline severity — icon color only */
-.ds-ack-info .ds-ack-icon { color: var(--ds-primary); }
-.ds-ack-error .ds-ack-icon { color: var(--ds-danger); }
-.ds-ack-success .ds-ack-icon { color: var(--ds-success); }
-.ds-ack-warning .ds-ack-icon { color: var(--ds-warning); }
-.ds-ack .ds-ack-dismiss { color: var(--ds-tone-1); }
+.ds-ack-info .ds-ack-icon,
+.ds-alert-info .ds-alert-icon { color: var(--ds-primary); }
+.ds-ack-error .ds-ack-icon,
+.ds-alert-error .ds-alert-icon { color: var(--ds-danger); }
+.ds-ack-success .ds-ack-icon,
+.ds-alert-success .ds-alert-icon { color: var(--ds-success); }
+.ds-ack-warning .ds-ack-icon,
+.ds-alert-warning .ds-alert-icon { color: var(--ds-warning); }
+.ds-ack .ds-ack-dismiss,
+.ds-alert .ds-alert-dismiss { color: var(--ds-tone-1); }
 
 /* Floating variant */
-.ds-ack-floating {
+.ds-ack-floating,
+.ds-alert-floating {
   padding: var(--ds-space-1) var(--ds-space-4);
   height: 48px;
   color: var(--ds-w-100);
   box-shadow: var(--ds-shadow-floating);
 }
-.ds-ack-floating .ds-ack-link { color: var(--ds-w-100); }
-.ds-ack-floating .ds-ack-dismiss { color: var(--ds-w-100); }
+/* text, link and dismiss follow each color's contrast token (white in light theme, black on the dark-theme colors) */
+.ds-ack-floating .ds-ack-link,
+.ds-alert-floating .ds-alert-link { color: inherit; }
+.ds-ack-floating .ds-ack-dismiss,
+.ds-alert-floating .ds-alert-dismiss { color: inherit; }
 
-.ds-ack-floating.ds-ack-info { background: var(--ds-primary); }
-.ds-ack-floating.ds-ack-error { background: var(--ds-danger); }
-.ds-ack-floating.ds-ack-success { background: var(--ds-success); }
-.ds-ack-floating.ds-ack-warning { background: var(--ds-warning); }
+.ds-ack-floating.ds-ack-info,
+.ds-alert-floating.ds-alert-info { background: var(--ds-primary); color: var(--ds-primary-text-contrast); }
+.ds-ack-floating.ds-ack-error,
+.ds-alert-floating.ds-alert-error { background: var(--ds-danger); color: var(--ds-danger-text-contrast); }
+.ds-ack-floating.ds-ack-success,
+.ds-alert-floating.ds-alert-success { background: var(--ds-success); color: var(--ds-success-text-contrast); }
+.ds-ack-floating.ds-ack-warning,
+.ds-alert-floating.ds-alert-warning { background: var(--ds-warning); color: var(--ds-warning-text-contrast); }
 
 /* Floating hides the severity icon */
-.ds-ack-floating .ds-ack-icon { display: none; }
+.ds-ack-floating .ds-ack-icon,
+.ds-alert-floating .ds-alert-icon { display: none; }
 
 /* Toast demo — active state */
-.ds-ack-floating.ds-toast-active {
+.ds-ack-floating.ds-toast-active,
+.ds-alert-floating.ds-toast-active {
   position: fixed;
   top: var(--ds-space-6);
   left: 50%;
@@ -1643,13 +1959,15 @@ html, body {
 }
 
 /* ---- Hint (Tooltip) ---- */
-.ds-hint {
+.ds-hint,
+.ds-tooltip {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
 }
 
-.ds-hint-body {
+.ds-hint-body,
+.ds-tooltip-body {
   background: var(--ds-tone-1);
   color: var(--ds-tone-8);
   font-family: var(--ds-font-family);
@@ -1662,45 +1980,58 @@ html, body {
   width: max-content;
 }
 
-.ds-hint-arrow {
+.ds-hint-arrow,
+.ds-tooltip-arrow {
   flex-shrink: 0;
   line-height: 0;
 }
-.ds-hint-arrow svg {
+.ds-hint-arrow svg,
+.ds-tooltip-arrow svg {
   display: block;
 }
-.ds-hint-arrow svg path { fill: var(--ds-tone-1); }
+.ds-hint-arrow svg path,
+.ds-tooltip-arrow svg path { fill: var(--ds-tone-1); }
 
 /* Direction: Top (body on top, arrow below pointing down) */
-.ds-hint-top { flex-direction: column; }
-.ds-hint-top .ds-hint-arrow { margin-top: -1px; }
+.ds-hint-top,
+.ds-tooltip-top { flex-direction: column; }
+.ds-hint-top .ds-hint-arrow,
+.ds-tooltip-top .ds-tooltip-arrow { margin-top: -1px; }
 
 /* Direction: Bottom (arrow on top pointing up, body below) */
-.ds-hint-bottom { flex-direction: column-reverse; }
-.ds-hint-bottom .ds-hint-arrow { margin-bottom: -1px; }
+.ds-hint-bottom,
+.ds-tooltip-bottom { flex-direction: column-reverse; }
+.ds-hint-bottom .ds-hint-arrow,
+.ds-tooltip-bottom .ds-tooltip-arrow { margin-bottom: -1px; }
 
 /* Direction: Right (body left, arrow right pointing right) */
-.ds-hint-right {
+.ds-hint-right,
+.ds-tooltip-right {
   flex-direction: row;
   align-items: center;
 }
-.ds-hint-right .ds-hint-arrow { margin-left: -1px; }
+.ds-hint-right .ds-hint-arrow,
+.ds-tooltip-right .ds-tooltip-arrow { margin-left: -1px; }
 
 /* Direction: Left (arrow left pointing left, body right) */
-.ds-hint-left {
+.ds-hint-left,
+.ds-tooltip-left {
   flex-direction: row-reverse;
   align-items: center;
 }
-.ds-hint-left .ds-hint-arrow { margin-right: -1px; }
+.ds-hint-left .ds-hint-arrow,
+.ds-tooltip-left .ds-tooltip-arrow { margin-right: -1px; }
 
 /* Hint trigger — wrap around a trigger element + a .ds-hint */
-.ds-hint-trigger {
+.ds-hint-trigger,
+.ds-tooltip-trigger {
   position: relative;
   display: inline-flex;
   align-items: center;
   cursor: pointer;
 }
-.ds-hint-trigger .ds-hint {
+.ds-hint-trigger .ds-hint,
+.ds-tooltip-trigger .ds-tooltip {
   position: absolute;
   pointer-events: none;
   opacity: 0;
@@ -1708,29 +2039,34 @@ html, body {
   transition: opacity var(--ds-duration-slow) ease, transform var(--ds-duration-slow) ease;
   z-index: var(--ds-z-tooltip);
 }
-.ds-hint-trigger:hover .ds-hint {
+.ds-hint-trigger:hover .ds-hint,
+.ds-tooltip-trigger:hover .ds-tooltip {
   opacity: 1;
   transform: scale(1);
   pointer-events: auto;
 }
 
 /* Position the tooltip based on direction */
-.ds-hint-trigger .ds-hint-top {
+.ds-hint-trigger .ds-hint-top,
+.ds-tooltip-trigger .ds-tooltip-top {
   bottom: calc(100% + var(--ds-space-1));
   left: 50%;
   translate: -50% 0;
 }
-.ds-hint-trigger .ds-hint-bottom {
+.ds-hint-trigger .ds-hint-bottom,
+.ds-tooltip-trigger .ds-tooltip-bottom {
   top: calc(100% + var(--ds-space-1));
   left: 50%;
   translate: -50% 0;
 }
-.ds-hint-trigger .ds-hint-right {
+.ds-hint-trigger .ds-hint-right,
+.ds-tooltip-trigger .ds-tooltip-right {
   left: calc(100% + var(--ds-space-1));
   top: 50%;
   translate: 0 -50%;
 }
-.ds-hint-trigger .ds-hint-left {
+.ds-hint-trigger .ds-hint-left,
+.ds-tooltip-trigger .ds-tooltip-left {
   right: calc(100% + var(--ds-space-1));
   top: 50%;
   translate: 0 -50%;
@@ -1997,7 +2333,7 @@ ds-icon svg {
 .ds-modal-backdrop {
   position: absolute;
   inset: 0;
-  background: var(--ds-b-60);
+  background: var(--ds-backdrop);
 }
 .ds-modal-dialog {
   position: relative;
@@ -2113,7 +2449,8 @@ html.ds-modal-open {
    ============================================ */
 /* A ring with a quarter arc that turns. Default is primary on a primary-tint
    track; -white sits on dark or colored surfaces, -black on light images. */
-.ds-spinner {
+.ds-spinner,
+.ds-loader {
   display: inline-block;
   flex-shrink: 0;
   width: 20px;
@@ -2125,11 +2462,13 @@ html.ds-modal-open {
   transform: rotate(45deg);
   animation: ds-spin var(--ds-duration-spin) linear infinite;
 }
-.ds-spinner-white {
+.ds-spinner-white,
+.ds-loader-white {
   border-color: var(--ds-w-40);
   border-top-color: var(--ds-w-100);
 }
-.ds-spinner-black {
+.ds-spinner-black,
+.ds-loader-black {
   border-color: var(--ds-b-40);
   border-top-color: var(--ds-b-100);
 }
@@ -2138,5 +2477,6 @@ html.ds-modal-open {
   100% { transform: rotate(405deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ds-spinner { animation-duration: calc(var(--ds-duration-spin) * 3); }
+  .ds-spinner,
+  .ds-loader { animation-duration: calc(var(--ds-duration-spin) * 3); }
 }
