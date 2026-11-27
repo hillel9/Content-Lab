@@ -58,6 +58,9 @@
   --ds-primary-tint-20: rgba(0,110,250,0.2);
   --ds-danger-tint-10: rgba(202,28,45,0.1);
   --ds-danger-tint-20: rgba(202,28,45,0.2);
+  --ds-success-tint-20: rgba(35,128,58,0.2);   /* Status (Figma "status" Success) */
+  --ds-warning-tint-20: rgba(242,108,13,0.2);  /* Status Pending: warning-brighter at 20% (KEP warning.light) */
+  --ds-tone-3-tint-20: rgba(135,135,135,0.2);  /* Status Default */
 
   /* Tones — Light Theme */
   --ds-tone-1: #333333;
@@ -167,6 +170,8 @@
   --ds-duration-exit: 0.35s;
   --ds-duration-enter: 0.5s;
   --ds-duration-spin: 0.8s;
+  --ds-duration-pulse: 1.5s;        /* skeleton pulse (MUI Skeleton) */
+  --ds-delay-tooltip: 0.1s;         /* hover time before a tooltip shows (KEP / MUI enterDelay) */
   --ds-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Opacity */
@@ -207,6 +212,9 @@
   --ds-danger-text-contrast: #000000;
   --ds-danger-tint-10: rgba(233,94,108,0.1);
   --ds-danger-tint-20: rgba(233,94,108,0.2);
+  --ds-success-tint-20: rgba(49,181,81,0.2);
+  --ds-warning-tint-20: rgba(245,138,61,0.2);
+  --ds-tone-3-tint-20: rgba(153,153,153,0.2);
   --ds-success: #31b551;
   --ds-success-darker: #268c3f;
   --ds-success-brighter: #4ace6b;
@@ -269,6 +277,13 @@ html, body {
 .ds-btn-danger { background: var(--ds-danger); color: var(--ds-danger-text-contrast); }
 .ds-btn-danger:hover { background: var(--ds-danger-darker); }
 
+/* Translucent (Figma Pill Type=Translucent, KEP color="translucent"): for buttons over images or
+   video. Black at 60% with white text in both themes; hover 70%, pressed / keyboard focus 40%. */
+.ds-btn-translucent { background: var(--ds-b-60); color: var(--ds-w-100); }
+.ds-btn-translucent:hover { background: var(--ds-b-70); }
+.ds-btn-translucent:active,
+.ds-btn-translucent:focus-visible { background: var(--ds-b-40); }
+
 /* Disabled — applied via :disabled pseudo-class for real buttons.
    Outline style: empty background, tone-4 border and text. */
 .ds-btn:disabled,
@@ -288,6 +303,10 @@ html, body {
 .ds-btn-borderless.ds-btn-secondary:hover { background: var(--ds-tone-5); }
 .ds-btn-borderless.ds-btn-danger { background: transparent; color: var(--ds-danger); }
 .ds-btn-borderless.ds-btn-danger:hover { background: var(--ds-danger-tint-10); }
+.ds-btn-borderless.ds-btn-translucent { background: transparent; color: var(--ds-w-100); } /* Figma Borderless Type=Translucent */
+.ds-btn-borderless.ds-btn-translucent:hover { background: var(--ds-b-70); }
+.ds-btn-borderless.ds-btn-translucent:active,
+.ds-btn-borderless.ds-btn-translucent:focus-visible { background: var(--ds-b-40); }
 /* Borderless disabled: no border, tone-4 text */
 .ds-btn.ds-btn-borderless:disabled,
 .ds-btn.ds-btn-borderless[aria-disabled="true"] {
@@ -333,7 +352,8 @@ html, body {
 .ds-btn-xl.ds-btn-processing, .ds-btn-xl[aria-busy="true"] { --ds-btn-spin-size: 20px; --ds-btn-spin-stroke: 4px; }
 /* Spinner colors per variant (backgrounds stay as they are) */
 .ds-btn-primary.ds-btn-processing, .ds-btn-primary[aria-busy="true"],
-.ds-btn-danger.ds-btn-processing, .ds-btn-danger[aria-busy="true"] {
+.ds-btn-danger.ds-btn-processing, .ds-btn-danger[aria-busy="true"],
+.ds-btn-translucent.ds-btn-processing, .ds-btn-translucent[aria-busy="true"] {
   --ds-btn-spin-arc: var(--ds-w-100);
   --ds-btn-spin-track: var(--ds-w-40);
 }
@@ -806,6 +826,33 @@ button.ds-breadcrumb-item:hover { color: var(--ds-primary); }
   outline-offset: 2px;
 }
 
+/* Translucent checkbox and radio — over images or video (Figma Mode=Translucent,
+   KEP color="translucent"). Add to the label: .ds-checkbox-translucent / .ds-radio-translucent. */
+.ds-checkbox-translucent .ds-checkbox-indicator,
+.ds-radio-translucent .ds-radio-indicator { background: var(--ds-b-40); border-color: var(--ds-w-80); }
+.ds-checkbox-translucent:hover .ds-checkbox-input:not(:disabled):not(:checked):not(:indeterminate) + .ds-checkbox-indicator { background: var(--ds-b-40); border-color: var(--ds-w-100); }
+.ds-radio-translucent:hover .ds-radio-input:not(:disabled):not(:checked) + .ds-radio-indicator { border-color: var(--ds-w-100); }
+.ds-checkbox-translucent .ds-checkbox-input:checked + .ds-checkbox-indicator,
+.ds-checkbox-translucent .ds-checkbox-input:indeterminate + .ds-checkbox-indicator,
+.ds-radio-translucent .ds-radio-input:checked + .ds-radio-indicator { background: var(--ds-primary); border-color: var(--ds-primary); }
+.ds-checkbox-translucent:hover .ds-checkbox-input:not(:disabled):checked + .ds-checkbox-indicator,
+.ds-checkbox-translucent:hover .ds-checkbox-input:not(:disabled):indeterminate + .ds-checkbox-indicator,
+.ds-radio-translucent:hover .ds-radio-input:not(:disabled):checked + .ds-radio-indicator { background: var(--ds-primary-darker); border-color: var(--ds-primary-darker); }
+.ds-checkbox-translucent .ds-checkbox-input:disabled + .ds-checkbox-indicator,
+.ds-radio-translucent .ds-radio-input:disabled + .ds-radio-indicator { background: var(--ds-b-20); border-color: var(--ds-w-60); }
+.ds-checkbox-translucent .ds-checkbox-input:disabled + .ds-checkbox-indicator svg path { stroke: var(--ds-w-60); }
+.ds-radio-translucent .ds-radio-input:disabled:checked + .ds-radio-indicator { background: var(--ds-w-60); }
+.ds-radio-translucent .ds-radio-input:disabled:checked + .ds-radio-indicator::after { background: var(--ds-b-20); }
+.ds-checkbox-translucent .ds-checkbox-label,
+.ds-radio-translucent .ds-radio-label { color: var(--ds-w-100); }
+.ds-checkbox-translucent .ds-checkbox-input:disabled ~ .ds-checkbox-label,
+.ds-radio-translucent .ds-radio-input:disabled ~ .ds-radio-label { color: var(--ds-w-60); }
+
+/* Label placement (KEP labelPlacement): end is the default */
+.ds-checkbox-label-placement-start, .ds-radio-label-placement-start { flex-direction: row-reverse; }
+.ds-checkbox-label-placement-top, .ds-radio-label-placement-top { flex-direction: column-reverse; gap: var(--ds-space-1); }
+.ds-checkbox-label-placement-bottom, .ds-radio-label-placement-bottom { flex-direction: column; gap: var(--ds-space-1); }
+
 /* ============================================
    Switch
    ============================================ */
@@ -916,6 +963,124 @@ button.ds-breadcrumb-item:hover { color: var(--ds-primary); }
   font-size: var(--ds-font-size-3);
   color: var(--ds-tone-2);
 }
+
+/* ============================================
+   Slider
+   Look from the Figma Platform DS "Slider" (Type Continuous | Discrete; State Default,
+   Hover / Focus, Disabled); part names from KEP UI's Slider (rail, track, thumb, valueLabel,
+   mark, markActive). Built on a native <input type="range">, so keyboard and screen
+   readers work as usual; ds.js keeps the filled track, value label and active mark in step.
+   ============================================ */
+.ds-slider {
+  --ds-slider-p: 0; /* 0..1, set by ds.js from the input's value */
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-1);
+  width: 100%;
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-4);
+  line-height: var(--ds-line-height-18);
+}
+.ds-slider-title {
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-tone-1);
+}
+.ds-slider-control {
+  position: relative;
+  height: 24px;
+}
+.ds-slider-continuous .ds-slider-control { margin-top: 18px; } /* room for the value label */
+
+/* rail (grey) and track (filled part) */
+.ds-slider-control::before,
+.ds-slider-control::after {
+  content: '';
+  position: absolute;
+  top: 9px;
+  left: 8px;
+  height: 6px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+.ds-slider-control::before { right: 8px; background: var(--ds-tone-6); }
+.ds-slider-control::after {
+  width: calc(4px + (100% - 24px) * var(--ds-slider-p));
+  background: var(--ds-primary);
+}
+
+/* the native range input, with only the thumb visible */
+.ds-slider-input {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.ds-slider-input::-webkit-slider-runnable-track { height: 24px; background: transparent; }
+.ds-slider-input::-moz-range-track { height: 24px; background: transparent; }
+.ds-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ds-background);
+  background: var(--ds-primary);
+  transition: background var(--ds-duration-fast);
+}
+.ds-slider-input::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ds-background);
+  background: var(--ds-primary);
+  transition: background var(--ds-duration-fast);
+}
+.ds-slider-input:hover::-webkit-slider-thumb,
+.ds-slider-input:focus-visible::-webkit-slider-thumb,
+.ds-slider-input:active::-webkit-slider-thumb { background: var(--ds-primary-darker); }
+.ds-slider-input:hover::-moz-range-thumb,
+.ds-slider-input:focus-visible::-moz-range-thumb,
+.ds-slider-input:active::-moz-range-thumb { background: var(--ds-primary-darker); }
+.ds-slider-input:focus-visible { outline: none; }
+.ds-slider-input:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--ds-background), 0 0 0 4px var(--ds-primary); }
+.ds-slider-input:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--ds-background), 0 0 0 4px var(--ds-primary); }
+
+/* value label above the thumb (continuous) */
+.ds-slider-value-label {
+  position: absolute;
+  bottom: 100%;
+  left: calc(12px + (100% - 24px) * var(--ds-slider-p));
+  transform: translateX(-50%);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-tone-1);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* marks: min / max under a continuous slider, every step under a discrete one */
+.ds-slider-marks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ds-tone-1);
+}
+.ds-slider-continuous .ds-slider-marks { padding: 0 var(--ds-space-2); color: var(--ds-tone-3); }
+.ds-slider-discrete .ds-slider-marks { padding: 0; color: var(--ds-tone-1); }
+.ds-slider-mark { white-space: nowrap; }
+.ds-slider-mark-active { font-weight: var(--ds-font-weight-bold); }
+
+/* disabled */
+.ds-slider-input:disabled { cursor: not-allowed; }
+.ds-slider-input:disabled::-webkit-slider-thumb { background: var(--ds-tone-5); }
+.ds-slider-input:disabled::-moz-range-thumb { background: var(--ds-tone-5); }
+.ds-slider:has(.ds-slider-input:disabled) .ds-slider-control::after { background: var(--ds-tone-5); }
+.ds-slider:has(.ds-slider-input:disabled) .ds-slider-value-label,
+.ds-slider:has(.ds-slider-input:disabled) .ds-slider-marks { color: var(--ds-tone-3); }
 
 /* ============================================
    FormField
@@ -1311,6 +1476,32 @@ button.ds-breadcrumb-item:hover { color: var(--ds-primary); }
 }
 .ds-autocomplete-retry:hover { color: var(--ds-primary-darker); }
 
+/* -- Loading (KEP loading): add ds-autocomplete-loading; a loader replaces the chevron
+      and the menu shows only the .ds-autocomplete-loading-text row -- */
+.ds-autocomplete-loader { display: none; width: 16px; height: 16px; border-width: 3px; margin-left: auto; }
+.ds-autocomplete-loading .ds-autocomplete-loader { display: inline-block; }
+.ds-autocomplete-loading .ds-autocomplete-chevron { display: none; }
+.ds-autocomplete-loading .ds-autocomplete-clear:not([hidden]) + .ds-autocomplete-loader { margin-left: 0; }
+.ds-autocomplete-loading-text {
+  display: none;
+  padding: var(--ds-space-2) var(--ds-space-4);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-4);
+  color: var(--ds-tone-1);
+}
+.ds-autocomplete-loading .ds-autocomplete-loading-text { display: block; }
+.ds-autocomplete-loading .ds-autocomplete-menu .ds-select-item,
+.ds-autocomplete-loading .ds-autocomplete-menu .ds-autocomplete-empty { display: none !important; }
+
+/* -- Error (KEP hasError + errorMessage): add ds-autocomplete-error; the message is a
+      .ds-form-helper-text-error right after the autocomplete -- */
+.ds-autocomplete-error .ds-autocomplete-field,
+.ds-autocomplete-error .ds-autocomplete-field:hover { border-color: var(--ds-danger); }
+
+/* -- Free solo (KEP freeSolo): typed text is a value too; no "no results" row -- */
+.ds-autocomplete-free-solo .ds-autocomplete-empty { display: none !important; }
+.ds-autocomplete-free-solo:not(.ds-autocomplete-loading) .ds-autocomplete-menu:not(:has(.ds-select-item[role="option"]:not([hidden]))) { display: none; }
+
 /* -- Disabled (put `disabled` on the text input) -- */
 .ds-autocomplete:has(.ds-autocomplete-input:disabled) .ds-autocomplete-field {
   border-color: var(--ds-tone-4);
@@ -1474,6 +1665,22 @@ button.ds-breadcrumb-item:hover { color: var(--ds-primary); }
 .ds-segmented-item:disabled svg,
 .ds-segmented-button:disabled svg {
   color: var(--ds-tone-4);
+}
+
+/* Full width (KEP fullWidth): the buttons share the width */
+.ds-segmented-container-full-width {
+  display: flex;
+  width: 100%;
+}
+.ds-segmented-container-full-width > .ds-segmented-button,
+.ds-segmented-container-full-width > .ds-tooltip-trigger { flex: 1 1 0; }
+.ds-segmented-container-full-width > .ds-tooltip-trigger > .ds-segmented-button { width: 100%; }
+
+/* Disabled container (KEP disabled): every button is disabled, the selected one too */
+.ds-segmented-container[aria-disabled="true"] .ds-segmented-button {
+  color: var(--ds-tone-4);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* Icon inside item */
@@ -2040,11 +2247,21 @@ button.ds-breadcrumb-item:hover { color: var(--ds-primary); }
   z-index: var(--ds-z-tooltip);
 }
 .ds-hint-trigger:hover .ds-hint,
-.ds-tooltip-trigger:hover .ds-tooltip {
+.ds-tooltip-trigger:hover .ds-tooltip,
+.ds-tooltip-trigger:has(:focus-visible) .ds-tooltip {
   opacity: 1;
   transform: scale(1);
   pointer-events: auto;
 }
+/* Like KEP UI Tooltip: a short hover delay before it shows, shows on keyboard focus,
+   Escape hides it (ds.js adds -dismissed until the pointer or focus leaves). */
+.ds-tooltip-trigger:hover .ds-tooltip { transition-delay: var(--ds-delay-tooltip); }
+.ds-tooltip-trigger.ds-tooltip-dismissed .ds-tooltip {
+  opacity: 0;
+  pointer-events: none;
+}
+/* ds.js flips a tooltip to the other side when it has no room; the arrow turns with it */
+.ds-tooltip-flipped .ds-tooltip-arrow svg { transform: rotate(180deg); }
 
 /* Position the tooltip based on direction */
 .ds-hint-trigger .ds-hint-top,
@@ -2069,6 +2286,22 @@ button.ds-breadcrumb-item:hover { color: var(--ds-primary); }
 .ds-tooltip-trigger .ds-tooltip-left {
   right: calc(100% + var(--ds-space-1));
   top: 50%;
+  translate: 0 -50%;
+}
+/* Placement by side (KEP placement): the arrow always points at the trigger.
+   ds-tooltip-place-left = the tooltip sits on the left (arrow on its right side). */
+.ds-tooltip-trigger .ds-tooltip.ds-tooltip-place-left {
+  left: auto;
+  right: calc(100% + var(--ds-space-1));
+  top: 50%;
+  bottom: auto;
+  translate: 0 -50%;
+}
+.ds-tooltip-trigger .ds-tooltip.ds-tooltip-place-right {
+  right: auto;
+  left: calc(100% + var(--ds-space-1));
+  top: 50%;
+  bottom: auto;
   translate: 0 -50%;
 }
 
@@ -2439,6 +2672,71 @@ ds-icon svg {
   color: var(--ds-tone-2);
 }
 
+/* Content modal (KEP UI Modal variant="content"): for showing content (text, images, video),
+   not for tasks, so it IS dismissible: Escape, a click on the backdrop or the corner X
+   (.ds-modal-close) close it. The whole dialog scrolls with the window (KEP scroll="body")
+   instead of only its body. The default (task) modal needs no class; ds-modal-variant-task
+   may be written for clarity. */
+.ds-modal-variant-content {
+  align-items: flex-start;
+  overflow-y: auto;
+}
+.ds-modal-variant-content .ds-modal-backdrop { position: fixed; }
+.ds-modal-variant-content .ds-modal-dialog {
+  max-height: none;
+  margin: auto;
+  overflow: visible;
+}
+.ds-modal-variant-content .ds-modal-body { overflow: visible; }
+/* no title: the header only holds the X and shrinks */
+.ds-modal-variant-content .ds-modal-header:not(:has(.ds-modal-title)) {
+  min-height: var(--ds-space-16);
+  padding: 0;
+}
+/* Media that runs edge to edge: an image or video as the dialog's first child, with the
+   X (.ds-modal-close.ds-modal-close-pill) placed straight in the dialog, over it */
+.ds-modal-media {
+  display: block;
+  width: 100%;
+  flex-shrink: 0;
+  border-radius: var(--ds-roundness-2) var(--ds-roundness-2) 0 0;
+}
+.ds-modal-media + .ds-modal-body { padding-top: var(--ds-space-6); }
+.ds-modal-dialog > .ds-modal-close { z-index: 1; }
+/* Close button over images or video (KEP closeButtonVariant="pill") */
+.ds-modal-close-pill {
+  border-radius: 50%;
+  background: var(--ds-b-60);
+  color: var(--ds-w-100);
+}
+.ds-modal-close-pill:hover { background: var(--ds-b-70); }
+
+/* Phones (KEP UI Modal fullScreen below the sm breakpoint, 600px): every modal fills the
+   screen with square corners; the title and footer stay put and the body scrolls.
+   (CSS variables can't be used in media queries, so 599.98px is written out: KEP sm = 600px.) */
+@media (max-width: 599.98px) {
+  .ds-modal,
+  .ds-modal-variant-content {
+    padding: 0;
+    align-items: stretch;
+  }
+  .ds-modal .ds-modal-dialog,
+  .ds-modal-variant-content .ds-modal-dialog {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    margin: 0;
+    border-radius: 0;
+  }
+  /* a content modal scrolls as a whole inside the full-screen dialog */
+  .ds-modal-variant-content .ds-modal-dialog { overflow-y: auto; }
+  .ds-modal-media { border-radius: 0; }
+  .ds-modal-header { padding: var(--ds-space-10) var(--ds-space-6) var(--ds-space-6); }
+  .ds-modal-body { padding: 0 var(--ds-space-6) var(--ds-space-6); }
+  .ds-modal-footer { padding: var(--ds-space-3) var(--ds-space-6); margin-top: auto; }
+}
+
 /* Page behind the modal does not scroll */
 html.ds-modal-open {
   overflow: hidden;
@@ -2480,3 +2778,590 @@ html.ds-modal-open {
   .ds-spinner,
   .ds-loader { animation-duration: calc(var(--ds-duration-spin) * 3); }
 }
+
+/* ============================================
+   Menu (KEP UI Menu, MenuItem, NestedMenuItem, MenuDividerItem, MenuSectionTitle)
+   An action menu that opens from a button. It reuses the select menu look
+   (Figma "Select Menu", "Select Menu Item", "Seperator"): the menu is
+   .ds-select-menu.ds-menu and every item is .ds-select-item.ds-menu-item.
+   Behavior (open, close, keyboard, sub-menus) is in ds.js.
+   ============================================ */
+.ds-menu-wrapper,
+.ds-popover-wrapper {
+  position: relative;
+  display: inline-block;
+}
+.ds-menu {
+  width: auto;
+  min-width: 173px;   /* KEP Menu */
+  max-width: 320px;
+}
+.ds-menu-wrapper > .ds-menu {
+  position: absolute;
+  top: calc(100% + var(--ds-space-1));
+  left: 0;
+  z-index: var(--ds-z-dropdown);
+  display: none;
+}
+.ds-menu-wrapper.ds-menu-open > .ds-menu { display: block; }
+
+/* item: label truncates; optional start icon and right icon (KEP `icon`) */
+.ds-menu-item .ds-select-item-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ds-menu-item-start-icon,
+.ds-menu-item-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: inherit;
+}
+/* an open nested item stays highlighted (KEP `active`) */
+.ds-menu-item[aria-expanded="true"]::before { background: var(--ds-tone-6); }
+
+/* Divider (KEP MenuDividerItem): 1px tone-4, 8px above and below */
+.ds-menu-divider-item {
+  height: 0;
+  margin: var(--ds-space-2) 0;
+  border: none;
+  border-top: 1px solid var(--ds-tone-4);
+}
+/* Section title (KEP MenuSectionTitle). Add -lead when it is the first row of the menu. */
+.ds-menu-section-title {
+  padding: 0 var(--ds-space-4) var(--ds-space-2);
+  font-family: var(--ds-font-family);
+  font-weight: var(--ds-font-weight-bold);
+  font-size: var(--ds-font-size-4);
+  line-height: var(--ds-line-height-16);
+  color: var(--ds-tone-2);
+}
+.ds-menu-section-title-lead { padding-top: var(--ds-space-2); }
+
+/* A menu with sub-menus can't scroll (a scrolling box would cut the sub-menu off) */
+.ds-menu:has(.ds-nested-menu-item) {
+  overflow: visible;
+  max-height: none;
+}
+
+/* Nested sub-menu: opens to the right of its item (left when there is no room) */
+.ds-nested-menu-item { position: relative; }
+.ds-nested-menu-item > .ds-nested-menu {
+  position: absolute;
+  top: calc(-1 * var(--ds-space-2));
+  left: calc(100% + var(--ds-space-1));
+  z-index: var(--ds-z-dropdown);
+  display: none;
+}
+.ds-nested-menu-item.ds-nested-menu-left > .ds-nested-menu {
+  left: auto;
+  right: calc(100% + var(--ds-space-1));
+}
+.ds-nested-menu-item.ds-nested-menu-open > .ds-nested-menu { display: block; }
+
+/* ============================================
+   Popover (KEP UI Popover): elevated surface, 16px padding, medium elevation.
+   .ds-popover-wrapper > trigger [aria-haspopup] + .ds-popover. Behavior in ds.js.
+   ============================================ */
+.ds-popover {
+  padding: var(--ds-space-4);
+  background: var(--ds-elevated);
+  color: var(--ds-tone-1);
+  border-radius: var(--ds-roundness-1);
+  box-shadow: var(--ds-shadow-menu);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-4);
+  line-height: var(--ds-line-height-20);
+}
+.ds-popover-wrapper > .ds-popover,
+.ds-date-picker > .ds-date-picker-popper,
+.ds-time-picker > .ds-time-picker-popper {
+  position: absolute;
+  top: calc(100% + var(--ds-space-1));
+  left: 0;
+  z-index: var(--ds-z-dropdown);
+  display: none;
+  width: max-content;
+}
+.ds-popover-wrapper.ds-popover-open > .ds-popover,
+.ds-date-picker.ds-date-picker-open > .ds-date-picker-popper,
+.ds-time-picker.ds-time-picker-open > .ds-time-picker-popper { display: block; }
+.ds-popover:focus { outline: none; }
+
+/* Placement set by ds.js when there is no room below / on the right */
+.ds-popup-above > .ds-menu,
+.ds-popup-above > .ds-popover,
+.ds-popup-above > .ds-date-picker-popper,
+.ds-popup-above > .ds-time-picker-popper {
+  top: auto;
+  bottom: calc(100% + var(--ds-space-1));
+}
+.ds-popup-end > .ds-menu,
+.ds-popup-end > .ds-popover,
+.ds-popup-end > .ds-date-picker-popper,
+.ds-popup-end > .ds-time-picker-popper {
+  left: auto;
+  right: 0;
+}
+
+/* ============================================
+   Status (KEP UI Status, Figma "status")
+   A small, non-clickable chip: a 6px bullet (or a 16px icon) and a label.
+   variant: filled (default) | borderless (.ds-status-borderless)
+   color:   default | .ds-status-success | -warning | -error | -primary
+   ============================================ */
+.ds-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-1-5);
+  height: 24px;
+  padding: var(--ds-space-1) var(--ds-space-1-5);
+  border-radius: var(--ds-roundness-1);
+  background: var(--ds-tone-3-tint-20);
+  font-family: var(--ds-font-family);
+  font-weight: var(--ds-font-weight-bold);
+  font-size: var(--ds-font-size-4);
+  line-height: var(--ds-line-height-16);
+  color: var(--ds-tone-1);
+  white-space: nowrap;
+  vertical-align: middle;
+  --ds-status-color: var(--ds-tone-3);
+}
+/* bullet: an empty .ds-status-icon */
+.ds-status-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ds-status-color);
+}
+/* icon: a <ds-icon size="16"> (16px, 4px gap) */
+.ds-status > ds-icon {
+  flex-shrink: 0;
+  margin-right: calc(var(--ds-space-0-5) * -1);
+  color: var(--ds-tone-1);
+}
+.ds-status-success { background: var(--ds-success-tint-20); --ds-status-color: var(--ds-success); }
+.ds-status-warning { background: var(--ds-warning-tint-20); --ds-status-color: var(--ds-warning-brighter); }
+.ds-status-error   { background: var(--ds-danger-tint-20);  --ds-status-color: var(--ds-danger); }
+.ds-status-primary { background: var(--ds-primary-tint-20); --ds-status-color: var(--ds-primary); }
+.ds-status-success > ds-icon,
+.ds-status-warning > ds-icon,
+.ds-status-error > ds-icon,
+.ds-status-primary > ds-icon { color: var(--ds-status-color); }
+
+/* borderless: no background or padding; label takes the color (tone-3 for default) */
+.ds-status-borderless {
+  padding: 0;
+  background: transparent;
+  color: var(--ds-status-color);
+}
+.ds-status-borderless > ds-icon { color: var(--ds-status-color); }
+
+/* ============================================
+   Link (KEP UI Link): bold, tone-1, underlined; hover / focus tone-2 without underline.
+   Size: inherits, or .ds-link-sm (14px) / .ds-link-lg (16px).
+   With a leading 16px icon it follows Figma "Custom Links": no underline, 4px gap.
+   ============================================ */
+.ds-link {
+  font-family: var(--ds-font-family);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-tone-1);
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+.ds-link-sm { font-size: var(--ds-font-size-4); }
+.ds-link-lg { font-size: var(--ds-font-size-5); }
+.ds-link:visited,
+.ds-link:hover,
+.ds-link:focus,
+.ds-link:active { color: var(--ds-tone-2); }
+.ds-link:hover,
+.ds-link:focus { text-decoration: none; }
+.ds-link:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
+  border-radius: var(--ds-roundness-tiny);
+}
+.ds-link:has(> ds-icon) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  text-decoration: none;
+}
+.ds-link > ds-icon { flex-shrink: 0; }
+/* Disabled: a link without href and aria-disabled="true" (or a disabled <button class="ds-link">) */
+.ds-link[aria-disabled="true"],
+.ds-link:disabled {
+  color: var(--ds-tone-4);
+  text-decoration: underline;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.ds-link:has(> ds-icon)[aria-disabled="true"],
+.ds-link:has(> ds-icon):disabled { text-decoration: none; }
+/* Translucent: on images or video */
+.ds-link-translucent { color: var(--ds-w-100); }
+.ds-link-translucent:visited,
+.ds-link-translucent:hover,
+.ds-link-translucent:focus,
+.ds-link-translucent:active { color: var(--ds-w-80); }
+.ds-link-translucent[aria-disabled="true"],
+.ds-link-translucent:disabled { color: var(--ds-w-50); }
+
+/* ============================================
+   Date Picker and Time Picker (KEP UI DatePicker, TimePicker, ComposedDatePicker,
+   ComposedTimePicker). A field like .ds-input with an open-picker button at the
+   start, and a popper under it. ds.js builds the calendar / time lists.
+   Figma has a Time Picker (clock face) but no calendar: the calendar follows
+   KEP's code (MUI DateCalendar) with DS tokens; the time picker uses KEP's
+   current digital lists (hours / minutes / AM-PM) built from menu items.
+   ============================================ */
+.ds-date-picker,
+.ds-time-picker {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  max-width: 180px;
+}
+.ds-time-picker { max-width: 120px; }
+.ds-date-picker-full-width,
+.ds-time-picker-full-width { max-width: none; }
+
+.ds-date-picker-field,
+.ds-time-picker-field {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  background: var(--ds-tone-8);
+  border: 1px solid var(--ds-tone-3);
+  border-radius: var(--ds-roundness-1);
+  transition: border-color var(--ds-duration-base);
+}
+.ds-date-picker-field:hover,
+.ds-time-picker-field:hover { border-color: var(--ds-tone-2); }
+.ds-date-picker-field:focus-within,
+.ds-time-picker-field:focus-within,
+.ds-date-picker-open .ds-date-picker-field,
+.ds-time-picker-open .ds-time-picker-field { border-color: var(--ds-primary); }
+.ds-date-picker-error .ds-date-picker-field,
+.ds-time-picker-error .ds-time-picker-field { border-color: var(--ds-danger); }
+
+.ds-date-picker-open-button,
+.ds-time-picker-open-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 var(--ds-space-1) 0 var(--ds-space-2);
+  border: none;
+  border-radius: var(--ds-roundness-1) 0 0 var(--ds-roundness-1);
+  background: none;
+  color: var(--ds-tone-2);
+  cursor: pointer;
+}
+.ds-date-picker-open-button:hover,
+.ds-time-picker-open-button:hover { color: var(--ds-tone-1); }
+.ds-date-picker-open-button:focus-visible,
+.ds-time-picker-open-button:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: -2px;
+}
+.ds-date-picker-input,
+.ds-time-picker-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--ds-space-2) 0 var(--ds-space-1);
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--ds-font-family);
+  font-weight: var(--ds-font-weight-regular);
+  font-size: var(--ds-font-size-4);
+  color: var(--ds-tone-1);
+}
+.ds-date-picker-input::placeholder,
+.ds-time-picker-input::placeholder { color: var(--ds-tone-2); }
+
+/* Disabled: put `disabled` on the input and the button */
+.ds-date-picker:has(.ds-date-picker-input:disabled) .ds-date-picker-field,
+.ds-time-picker:has(.ds-time-picker-input:disabled) .ds-time-picker-field {
+  border-color: var(--ds-tone-4);
+  pointer-events: none;
+}
+.ds-date-picker-input:disabled,
+.ds-time-picker-input:disabled,
+.ds-date-picker-input:disabled::placeholder,
+.ds-time-picker-input:disabled::placeholder,
+.ds-date-picker-open-button:disabled,
+.ds-time-picker-open-button:disabled { color: var(--ds-tone-4); }
+
+/* Poppers: a popover without its padding (KEP: tone-8 paper, medium elevation, 4px radius) */
+.ds-date-picker-popper,
+.ds-time-picker-popper {
+  padding: var(--ds-space-2);
+  background: var(--ds-tone-8);
+  color: var(--ds-tone-1);
+  border-radius: var(--ds-roundness-1);
+  box-shadow: var(--ds-shadow-menu);
+  font-family: var(--ds-font-family);
+}
+
+/* -- Calendar -- */
+.ds-date-picker-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  height: 40px;
+  padding: 0 var(--ds-space-1) 0 var(--ds-space-3);
+}
+.ds-date-picker-month-label {
+  flex: 1 1 auto;
+  font-weight: var(--ds-font-weight-bold);
+  font-size: var(--ds-font-size-5);
+  color: var(--ds-tone-1);
+}
+.ds-date-picker-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ds-tone-1);
+  cursor: pointer;
+}
+.ds-date-picker-nav:hover { background: var(--ds-tone-6); }
+.ds-date-picker-nav:disabled { color: var(--ds-tone-4); cursor: default; background: none; }
+.ds-date-picker-nav:focus-visible,
+.ds-date-picker-day:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: -2px;
+}
+.ds-date-picker-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 36px);
+  gap: var(--ds-space-0-5) var(--ds-space-0-5);
+  padding: 0 var(--ds-space-2) var(--ds-space-2);
+}
+.ds-date-picker-weekday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  font-size: var(--ds-font-size-2);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-tone-2);
+}
+.ds-date-picker-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: none;
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-3);
+  color: var(--ds-tone-1);
+  cursor: pointer;
+}
+.ds-date-picker-day:hover { background: var(--ds-tone-6); }
+.ds-date-picker-day-today { border-color: var(--ds-tone-2); }
+.ds-date-picker-day[aria-selected="true"],
+.ds-date-picker-day[aria-selected="true"]:hover {
+  background: var(--ds-primary);
+  border-color: var(--ds-primary);
+  color: var(--ds-primary-text-contrast);
+  font-weight: var(--ds-font-weight-bold);
+}
+.ds-date-picker-day:disabled {
+  color: var(--ds-tone-4);
+  background: none;
+  cursor: default;
+}
+.ds-date-picker-day-outside { visibility: hidden; }
+
+/* -- Time lists (hours | minutes | AM-PM) -- */
+.ds-time-picker-sections {
+  display: flex;
+  gap: var(--ds-space-1);
+}
+.ds-time-picker-section {
+  width: 56px;
+  max-height: 232px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 0;
+}
+.ds-time-picker-section + .ds-time-picker-section {
+  border-left: 1px solid var(--ds-tone-6);
+}
+.ds-time-picker-item.ds-select-item {
+  justify-content: center;
+  padding: var(--ds-space-1-5) var(--ds-space-1);
+  font-size: var(--ds-font-size-4);
+}
+.ds-time-picker-item.ds-select-item::before { inset: var(--ds-space-0-5); }
+.ds-time-picker-item .ds-select-item-label { text-align: center; }
+.ds-time-picker-item[aria-selected="true"],
+.ds-time-picker-item[aria-selected="true"]:hover { color: var(--ds-primary-text-contrast); }
+.ds-time-picker-item[aria-selected="true"]::before,
+.ds-time-picker-item[aria-selected="true"]:hover::before,
+.ds-time-picker-item[aria-selected="true"]:focus-visible::before { background: var(--ds-primary); }
+.ds-time-picker-item[aria-selected="true"]:focus-visible {
+  outline: 2px solid var(--ds-tone-1);
+  outline-offset: -2px;
+}
+.ds-time-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--ds-space-2);
+  margin-top: var(--ds-space-2);
+  border-top: 1px solid var(--ds-tone-6);
+}
+
+/* ============================================
+   Table loading: skeleton rows (KEP table LoadingContent, Figma "Skeleton").
+   A 76x46 thumbnail and four bars (55 / 15 / 15 / 15%), tone-5, 3 rows by default.
+   ============================================ */
+.ds-table-skeleton { width: 100%; }
+.ds-table-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-6);
+  padding: var(--ds-space-6) var(--ds-space-2);
+  border-bottom: 1px solid var(--ds-tone-4);
+}
+.ds-table-skeleton-thumb,
+.ds-table-skeleton-bar {
+  display: block;
+  flex-shrink: 0;
+  background: var(--ds-tone-5);
+  border-radius: var(--ds-roundness-1);
+  animation: ds-skeleton-pulse var(--ds-duration-pulse) ease-in-out 0.5s infinite;
+}
+.ds-table-skeleton-thumb { width: 76px; height: 46px; }
+.ds-table-skeleton-bar { height: 19px; flex: 15 1 0; }
+.ds-table-skeleton-bar:first-child,
+.ds-table-skeleton-thumb + .ds-table-skeleton-bar { flex-grow: 55; }
+@keyframes ds-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: var(--ds-opacity-disabled); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-table-skeleton-thumb,
+  .ds-table-skeleton-bar { animation: none; }
+}
+
+/* ============================================
+   Pagination variants (KEP UI Pagination: variant text | outlined, shape rounded | circular,
+   showFirstButton / showLastButton). Add to .ds-table-pagination.
+   ============================================ */
+.ds-table-pagination-outlined .ds-table-page {
+  border: 1px solid var(--ds-tone-4);
+}
+.ds-table-pagination-outlined .ds-table-page[aria-current="page"] { border-color: var(--ds-tone-2); }
+.ds-table-pagination-outlined .ds-table-page:disabled { border-color: var(--ds-tone-5); }
+.ds-table-pagination-circular .ds-table-page { border-radius: 50%; }
+.ds-table-page:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 1px;
+}
+.ds-table-page-first ds-icon { transform: rotate(90deg); }
+.ds-table-page-last ds-icon { transform: rotate(-90deg); }
+.ds-table-pagination-borderless { border-top: none; }
+
+/* ============================================
+   Rich Text (KEP UI @kaltura/ds-react-richtext): a toolbar of icon buttons over a
+   contenteditable area. Parts: toolbar, richText (editor). States: focused, readOnly, error.
+   Behavior (commands, active state, ds-change) is in ds.js.
+   ============================================ */
+.ds-rich-text {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: var(--ds-tone-8);
+  border: 1px solid var(--ds-tone-4);
+  border-radius: var(--ds-roundness-1);
+  transition: border-color var(--ds-duration-base);
+}
+.ds-rich-text:focus-within { border-color: var(--ds-primary); }
+.ds-rich-text-error { border-color: var(--ds-danger); }
+.ds-rich-text-read-only,
+.ds-rich-text-read-only:focus-within {
+  border-color: var(--ds-tone-4);
+  background: var(--ds-tone-7);
+}
+.ds-rich-text-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-1);
+  padding: var(--ds-space-2);
+}
+.ds-rich-text-separator {
+  width: 1px;
+  height: 20px;
+  margin: 0 var(--ds-space-1);
+  background: var(--ds-tone-5);
+}
+.ds-rich-text-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ds-roundness-1);
+  background: none;
+  color: var(--ds-tone-1);
+  cursor: pointer;
+}
+.ds-rich-text-action:hover { background: var(--ds-tone-6); }
+.ds-rich-text-action[aria-pressed="true"] { background: var(--ds-tone-4); }
+.ds-rich-text-action:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 1px;
+}
+.ds-rich-text-action:disabled {
+  color: var(--ds-tone-4);
+  background: none;
+  pointer-events: none;
+}
+.ds-rich-text-editor {
+  min-height: 88px;
+  padding: 0 var(--ds-space-4) var(--ds-space-4);
+  outline: none;
+  overflow-y: auto;
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-4);
+  line-height: var(--ds-line-height-20);
+  color: var(--ds-tone-1);
+  white-space: pre-wrap;
+}
+.ds-rich-text-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--ds-tone-3);
+  pointer-events: none;
+}
+.ds-rich-text-editor ul,
+.ds-rich-text-editor ol {
+  margin: 0;
+  padding-left: var(--ds-space-6);
+}
+.ds-rich-text-editor p { margin: 0; }

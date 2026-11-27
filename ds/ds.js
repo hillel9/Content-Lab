@@ -6,9 +6,10 @@
 
    Public API:   window.DS  { version, setTheme, getTheme, showToast, openModal, closeModal, setProcessing }
    Custom events (bubble):
-     ds-change        select / autocomplete / tabs / segmented / switch / pagination   detail: { value, label }
+     ds-change        select / autocomplete / tabs / segmented / switch / pagination / slider /
+                      date picker / time picker / rich text                                detail: { value, label }
      ds-open          modal opened                                       detail: { id }
-     ds-close         modal closed                                       detail: { id, reason: 'button' or 'api' }
+     ds-close         modal closed                                       detail: { id, reason: 'button' | 'api' | 'escape' | 'backdrop' }
      ds-theme-change  fired on document                                  detail: { theme }
    Web component:  <ds-icon name="settings" size="16|24"></ds-icon>  (needs ds-icons.js)
    ============================================ */
@@ -365,8 +366,42 @@
     acUpdateClear(w);
   }
 
+  // freeSolo (KEP): the typed text is a value too, even if no option matches
+  function acFreeSolo(w) { return w.classList.contains('ds-autocomplete-free-solo'); }
+
+  function acCommitFree(w) {
+    var p = acParts(w);
+    var text = p.input.value.trim();
+    if (acMultiple(w)) {
+      var match = acOptions(w).filter(function (o) { return acLabelOf(o).toLowerCase() === text.toLowerCase(); })[0];
+      if (match) { acPick(w, match); return; }
+      var exists = acChips(w).some(function (c) { return (c.getAttribute('data-value') || textOf(c)) === text; });
+      if (!exists) p.field.insertBefore(acMakeChip(p.input, text, text), p.more || p.input);
+      p.input.value = '';
+      acFilter(w);
+      acSyncSelected(w);
+      acUpdateClear(w);
+      acEmitMulti(w);
+      return;
+    }
+    w._dsFreeValue = text;
+    acClose(w);
+    emit(w, 'ds-change', { value: text, label: text });
+  }
+
   function acClose(w) {
     var p = acParts(w);
+    // single freeSolo: leaving the field keeps what was typed as the value
+    if (acFreeSolo(w) && !acMultiple(w) && p.input && w.classList.contains(AC_OPEN)) {
+      var typed = p.input.value.trim();
+      var picked = acOptions(w).filter(function (o) { return o.getAttribute('aria-selected') === 'true'; })[0];
+      var current = picked ? acLabelOf(picked) : (w._dsFreeValue || '');
+      if (typed !== current && typed !== '') {
+        w._dsFreeValue = typed;
+        acOptions(w).forEach(function (o) { o.setAttribute('aria-selected', 'false'); });
+        emit(w, 'ds-change', { value: typed, label: typed });
+      }
+    }
     w.classList.remove(AC_OPEN);
     if (p.input) p.input.setAttribute('aria-expanded', 'false');
     acSetActive(w, null);
@@ -615,8 +650,10 @@
     if (key === 'Enter' && open) {
       var active = w.querySelector('.ds-autocomplete-active');
       if (active) { e.preventDefault(); acPick(w, active); }
+      else if (acFreeSolo(w) && input.value.trim() !== '') { e.preventDefault(); acCommitFree(w); }
       return;
     }
+    if (key === 'Enter' && acFreeSolo(w) && input.value.trim() !== '') { e.preventDefault(); acCommitFree(w); return; }
     if (key === 'Backspace' && acMultiple(w) && input.value === '' && input.selectionStart === 0) {
       var chips = acChips(w);
       if (chips.length) { e.preventDefault(); acRemoveChip(w, chips[chips.length - 1]); }
@@ -653,7 +690,7 @@
   GROUPS.forEach(function (cfg) {
     doc.addEventListener('click', function (e) {
       var item = e.target.closest && e.target.closest(cfg.item);
-      if (item && !isDisabled(item)) selectInGroup(cfg, item, false);
+      if (item && !isDisabled(item) && !item.closest(cfg.list + '[aria-disabled="true"]')) selectInGroup(cfg, item, false);
     });
 
     doc.addEventListener('keydown', function (e) {
@@ -662,6 +699,7 @@
       var k = e.key;
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].indexOf(k) < 0) return;
       var list = item.closest(cfg.list);
+      if (list.getAttribute('aria-disabled') === 'true') return; // whole group disabled (KEP SegmentedContainer disabled)
       var items = toArray(list.querySelectorAll(cfg.item)).filter(function (i) { return !isDisabled(i); });
       if (!items.length) return;
       e.preventDefault();
@@ -728,7 +766,7 @@
     var page = e.target.closest && e.target.closest('.ds-table-page');
     if (!page || page.disabled || !/^\d+$/.test(page.textContent.trim())) return;
     var bar = page.closest('.ds-table-pagination');
-    if (!bar || page.getAttribute('aria-current') === 'page') return;
+    if (!bar || bar.hasAttribute('data-count') || page.getAttribute('aria-current') === 'page') return;
     toArray(bar.querySelectorAll('.ds-table-page')).forEach(function (p) { p.removeAttribute('aria-current'); });
     page.setAttribute('aria-current', 'page');
     var n = page.textContent.trim();
@@ -833,8 +871,10 @@
      Open:   DS.openModal('my-modal')   or   <button data-ds-open="my-modal">
      Close:  DS.closeModal()            or   any element with [data-ds-close] inside the dialog
              (the Cancel button, or the optional corner X).
-     Modals are STATIC on purpose: they hold forms and tasks, so clicking the backdrop or
-     pressing Escape never closes them (the user would lose what they typed).
+     Task modals (the default) are STATIC on purpose: they hold forms and tasks, so clicking the
+     backdrop or pressing Escape never closes them (the user would lose what they typed).
+     Content modals (.ds-modal-variant-content, KEP variant="content") show content and DO close
+     on a backdrop click (reason 'backdrop') or Escape (reason 'escape').
      Focus is trapped inside while open and returned to the opener on close. */
 
   var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
@@ -900,6 +940,12 @@
       openModal(opener.getAttribute('data-ds-open'), opener);
       return;
     }
+    // content modal: a click on the backdrop (or the empty area around the dialog) closes it
+    var shade = t.matches('.ds-modal-variant-content, .ds-modal-variant-content > .ds-modal-backdrop') ? t.closest('.ds-modal') : null;
+    if (shade && topModal() && topModal().el === shade) {
+      closeModal(shade, 'backdrop');
+      return;
+    }
     var closer = t.closest('[data-ds-close]');
     if (closer) {
       // the backdrop never closes a modal, even if older markup still has data-ds-close on it
@@ -913,8 +959,9 @@
     var top = topModal();
     if (!top) return;
 
-    // Escape intentionally does nothing here. (An open select inside the modal still closes
-    // on Escape: that is handled in the select code above.)
+    // Escape does nothing on a task modal (the default). A content modal closes on Escape:
+    // that listener is at the end of this file, so open menus, selects and pickers inside
+    // the modal use the Escape first.
 
     if (e.key === 'Tab') {
       var dialog = top.el.querySelector('.ds-modal-dialog') || top.el;
@@ -945,6 +992,64 @@
     var items = focusableIn(dialog);
     (items[0] || dialog).focus();
   });
+
+  /* ---------- slider ----------
+     .ds-slider (+ .ds-slider-continuous | .ds-slider-discrete) > .ds-slider-control >
+       output.ds-slider-value-label + input.ds-slider-input[type=range]; then .ds-slider-marks > .ds-slider-mark.
+     Names follow KEP UI's Slider (rail, track, thumb, valueLabel, mark, markActive). The native range input
+     gives keyboard and screen-reader support; ds.js sets --ds-slider-p (0..1) for the filled track and the
+     value label position, writes the value label, and marks the active step (.ds-slider-mark-active).
+     Fires ds-change on .ds-slider when the user lets go: detail { value: <number>, label }. */
+  var SL = '.ds-slider';
+
+  function slSync(w) {
+    var input = w.querySelector('.ds-slider-input');
+    if (!input) return;
+    var min = parseFloat(input.min || 0), max = parseFloat(input.max || 100), v = parseFloat(input.value);
+    var p = max > min ? (v - min) / (max - min) : 0;
+    w.style.setProperty('--ds-slider-p', String(Math.min(1, Math.max(0, p))));
+    var out = w.querySelector('.ds-slider-value-label');
+    if (out) out.textContent = (w.getAttribute('data-prefix') || '') + input.value + (w.getAttribute('data-suffix') || '');
+    var marks = toArray(w.querySelectorAll('.ds-slider-mark'));
+    if (marks.length && w.classList.contains('ds-slider-discrete')) {
+      var step = parseFloat(input.step || 1);
+      var idx = Math.round((v - min) / step);
+      marks.forEach(function (m, i) {
+        var active = m.hasAttribute('data-value') ? parseFloat(m.getAttribute('data-value')) === v : i === idx;
+        m.classList.toggle('ds-slider-mark-active', active);
+      });
+    }
+  }
+
+  function slSyncAll() { toArray(doc.querySelectorAll(SL)).forEach(slSync); }
+
+  doc.addEventListener('input', function (e) {
+    var w = e.target.closest ? e.target.closest(SL) : null;
+    if (w && e.target.matches('.ds-slider-input')) slSync(w);
+  });
+  doc.addEventListener('change', function (e) {
+    var w = e.target.closest ? e.target.closest(SL) : null;
+    if (!w || !e.target.matches('.ds-slider-input')) return;
+    slSync(w);
+    var active = w.querySelector('.ds-slider-mark-active');
+    var out = w.querySelector('.ds-slider-value-label');
+    var label = active ? textOf(active) : out ? textOf(out) : e.target.value;
+    emit(w, 'ds-change', { value: Number(e.target.value), label: label });
+  });
+
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', slSyncAll);
+  else slSyncAll();
+  if (window.MutationObserver) {
+    new MutationObserver(function (records) {
+      records.forEach(function (r) {
+        toArray(r.addedNodes).forEach(function (n) {
+          if (n.nodeType !== 1) return;
+          if (n.matches(SL)) slSync(n);
+          toArray(n.querySelectorAll(SL)).forEach(slSync);
+        });
+      });
+    }).observe(doc.documentElement, { childList: true, subtree: true });
+  }
 
   /* ---------- breadcrumbs ----------
      nav.ds-breadcrumbs > ol.ds-breadcrumbs-ol > li.ds-breadcrumbs-li (.ds-breadcrumb-item)
@@ -1174,10 +1279,855 @@
     else btn.removeAttribute('aria-busy');
   }
 
+  /* ---------- popups: menu, popover, date picker, time picker ----------
+     One wrapper holds a trigger and a panel. ds.js toggles the open class on the
+     wrapper and aria-expanded on the trigger, closes on outside click, Escape or
+     Tab-out, returns focus to the trigger, and flips the panel above / to the end
+     when there is no room (.ds-popup-above, .ds-popup-end on the wrapper).
+
+     Menu (KEP Menu / MenuItem / NestedMenuItem):
+       .ds-menu-wrapper > button[aria-haspopup="menu"] + .ds-select-menu.ds-menu[role=menu]
+         > button.ds-select-item.ds-menu-item[role=menuitem] ...
+         > .ds-nested-menu-item > button.ds-menu-item[aria-haspopup="menu"] + .ds-select-menu.ds-menu.ds-nested-menu
+       Items are plain buttons: the page listens for their click; the menu then closes.
+       Keyboard: Enter/Space/ArrowDown on the trigger opens; arrows, Home, End move;
+       ArrowRight/Enter/Space opens a sub-menu, ArrowLeft or Escape closes it; Escape closes the menu.
+     Popover (KEP Popover): .ds-popover-wrapper > [aria-haspopup="dialog"] + .ds-popover[role=dialog]
+     Date / time picker: see below. */
+
+  var POPUPS = [
+    { wrap: '.ds-menu-wrapper', trigger: '.ds-menu-wrapper > [aria-haspopup]', panel: '.ds-menu', open: 'ds-menu-open' },
+    { wrap: '.ds-popover-wrapper', trigger: '.ds-popover-wrapper > [aria-haspopup]', panel: '.ds-popover', open: 'ds-popover-open' },
+    { wrap: '.ds-date-picker', trigger: '.ds-date-picker-open-button', panel: '.ds-date-picker-popper', open: 'ds-date-picker-open',
+      onOpen: function (w) { dpOpen(w); }, onFocus: function (w) { dpFocus(w); } },
+    { wrap: '.ds-time-picker', trigger: '.ds-time-picker-open-button', panel: '.ds-time-picker-popper', open: 'ds-time-picker-open',
+      onOpen: function (w) { tpOpen(w); }, onFocus: function (w) { tpFocus(w); } }
+  ];
+  var popCount = 0;
+
+  function popCfgOf(w) {
+    for (var i = 0; i < POPUPS.length; i++) if (w.matches(POPUPS[i].wrap)) return POPUPS[i];
+    return null;
+  }
+  function popParts(cfg, w) {
+    var trigger = null, panel = null;
+    toArray(w.children).forEach(function (c) {
+      if (!panel && c.matches(cfg.panel)) panel = c;
+    });
+    trigger = toArray(w.querySelectorAll(cfg.trigger)).filter(function (t) { return t.closest(cfg.wrap) === w; })[0] || null;
+    return { trigger: trigger, panel: panel };
+  }
+  function popIsOpen(w) { var c = popCfgOf(w); return !!c && w.classList.contains(c.open); }
+
+  function popPlace(w, panel) {
+    w.classList.remove('ds-popup-above', 'ds-popup-end');
+    var r = panel.getBoundingClientRect();
+    var wr = w.getBoundingClientRect();
+    if (r.bottom > window.innerHeight && wr.top - r.height > 0) w.classList.add('ds-popup-above');
+    if (r.right > window.innerWidth && wr.right - r.width > 0) w.classList.add('ds-popup-end');
+  }
+
+  function popOpen(w, focus) {
+    var cfg = popCfgOf(w);
+    if (!cfg || w.classList.contains(cfg.open)) return;
+    var p = popParts(cfg, w);
+    if (!p.panel || (p.trigger && isDisabled(p.trigger))) return;
+    popCloseAll(w);
+    popCount += 1;
+    if (!p.panel.id) p.panel.id = 'ds-popup-' + popCount;
+    if (p.trigger) {
+      p.trigger.setAttribute('aria-expanded', 'true');
+      p.trigger.setAttribute('aria-controls', p.panel.id);
+    }
+    w.classList.add(cfg.open);
+    if (cfg.onOpen) cfg.onOpen(w);
+    popPlace(w, p.panel);
+    if (cfg.onFocus) cfg.onFocus(w);
+    if (focus === 'first' || focus === 'last') {
+      if (cfg.open === 'ds-menu-open') {
+        var items = menuItems(p.panel);
+        var el = focus === 'last' ? items[items.length - 1] : items[0];
+        if (el) el.focus();
+      } else if (cfg.open === 'ds-popover-open') {
+        var f = focusableIn(p.panel)[0];
+        if (!p.panel.hasAttribute('tabindex')) p.panel.setAttribute('tabindex', '-1');
+        (f || p.panel).focus();
+      }
+    }
+  }
+
+  function popClose(w, returnFocus) {
+    var cfg = popCfgOf(w);
+    if (!cfg || !w.classList.contains(cfg.open)) return;
+    var p = popParts(cfg, w);
+    w.classList.remove(cfg.open);
+    toArray(w.querySelectorAll('.ds-nested-menu-open')).forEach(function (n) { nestedClose(n); });
+    if (p.trigger) {
+      p.trigger.setAttribute('aria-expanded', 'false');
+      if (returnFocus) p.trigger.focus();
+    }
+  }
+
+  function popCloseAll(except) {
+    popOpenWrappers().forEach(function (w) {
+      if (w !== except && !(except && w.contains(except))) popClose(w);
+    });
+  }
+
+  function popOpenWrappers() {
+    var list = [];
+    POPUPS.forEach(function (cfg) { list = list.concat(toArray(doc.querySelectorAll(cfg.wrap + '.' + cfg.open))); });
+    return list;
+  }
+
+  /* menu items: the direct items of one menu (not those of its sub-menus) */
+  function menuItems(menu) {
+    return toArray(menu.querySelectorAll('[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]')).filter(function (el) {
+      return el.closest('.ds-menu') === menu && !isDisabled(el) && isVisible(el);
+    });
+  }
+
+  function nestedOpen(n, focusFirst) {
+    var btn = n.querySelector(':scope > [aria-haspopup]');
+    var sub = n.querySelector(':scope > .ds-nested-menu');
+    if (!btn || !sub || isDisabled(btn)) return;
+    // close sibling sub-menus
+    var menu = n.closest('.ds-menu');
+    toArray(menu.querySelectorAll('.ds-nested-menu-open')).forEach(function (o) {
+      if (o !== n && !o.contains(n)) nestedClose(o);
+    });
+    n.classList.add('ds-nested-menu-open');
+    btn.setAttribute('aria-expanded', 'true');
+    n.classList.remove('ds-nested-menu-left');
+    if (sub.getBoundingClientRect().right > window.innerWidth) n.classList.add('ds-nested-menu-left');
+    if (focusFirst) { var items = menuItems(sub); if (items[0]) items[0].focus(); }
+  }
+
+  function nestedClose(n, returnFocus) {
+    n.classList.remove('ds-nested-menu-open');
+    toArray(n.querySelectorAll('.ds-nested-menu-open')).forEach(function (o) { o.classList.remove('ds-nested-menu-open'); });
+    var btn = n.querySelector(':scope > [aria-haspopup]');
+    if (btn) {
+      btn.setAttribute('aria-expanded', 'false');
+      if (returnFocus) btn.focus();
+    }
+  }
+
+  doc.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t.closest) return;
+    var inside = null;
+    popOpenWrappers().forEach(function (w) { if (w.contains(t)) inside = w; });
+    // close every open popup the click is not inside (a picker inside a popover keeps both open)
+    popOpenWrappers().forEach(function (w) { if (!w.contains(t)) popClose(w); });
+
+    // trigger?
+    for (var i = 0; i < POPUPS.length; i++) {
+      var cfg = POPUPS[i];
+      var trig = t.closest(cfg.trigger);
+      if (trig && !isDisabled(trig)) {
+        var w = trig.closest(cfg.wrap);
+        if (w.classList.contains(cfg.open)) popClose(w);
+        else popOpen(w, e.detail === 0 ? 'first' : null); // detail 0 = keyboard activation
+        return;
+      }
+    }
+
+    // menu items
+    var item = t.closest('.ds-menu [role^="menuitem"]');
+    if (item && !isDisabled(item)) {
+      var nested = item.parentElement && item.parentElement.matches('.ds-nested-menu-item') ? item.parentElement : null;
+      if (nested && item.matches('[aria-haspopup]')) {
+        if (nested.classList.contains('ds-nested-menu-open') && e.detail !== 0) nestedClose(nested);
+        else nestedOpen(nested, e.detail === 0);
+        return;
+      }
+      var mw = item.closest('.ds-menu-wrapper');
+      if (mw) popClose(mw, e.detail === 0);
+    }
+  });
+
+  // hover opens a sub-menu and closes the other ones (KEP NestedMenuItem)
+  doc.addEventListener('mouseover', function (e) {
+    var t = e.target;
+    if (!t.closest) return;
+    var item = t.closest('.ds-menu [role^="menuitem"]');
+    if (!item) return;
+    var menu = item.closest('.ds-menu');
+    toArray(menu.querySelectorAll(':scope > .ds-nested-menu-item.ds-nested-menu-open, :scope .ds-nested-menu-item.ds-nested-menu-open')).forEach(function (o) {
+      if (o.closest('.ds-menu') === menu && !o.contains(item)) nestedClose(o);
+    });
+    var n = item.parentElement;
+    if (n && n.matches('.ds-nested-menu-item') && item.matches('[aria-haspopup]') && !isDisabled(item)) nestedOpen(n, false);
+  });
+
+  doc.addEventListener('keydown', function (e) {
+    var key = e.key;
+    var t = e.target;
+    if (!t.closest) return;
+
+    if (key === 'Escape') {
+      if (e.defaultPrevented) return;
+      // innermost sub-menu first
+      var sub = t.closest('.ds-nested-menu');
+      if (sub) {
+        e.preventDefault();
+        nestedClose(sub.parentElement, true);
+        return;
+      }
+      var open = popOpenWrappers().filter(function (w) { return w.contains(t); }).pop() || popOpenWrappers().pop();
+      if (open) {
+        e.preventDefault(); // tells the modal handler this Escape was already used
+        popClose(open, true);
+      }
+      return;
+    }
+
+    // trigger: ArrowDown / ArrowUp open a menu
+    var trig = t.closest('.ds-menu-wrapper > [aria-haspopup]');
+    if (trig && t === trig) {
+      if (key === 'ArrowDown' || key === 'ArrowUp') {
+        e.preventDefault();
+        popOpen(trig.parentElement, key === 'ArrowUp' ? 'last' : 'first');
+      }
+      return;
+    }
+
+    var item = t.closest('.ds-menu [role^="menuitem"]');
+    if (!item) return;
+    var menu = item.closest('.ds-menu');
+    if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Home' || key === 'End') {
+      var items = menuItems(menu);
+      if (!items.length) return;
+      e.preventDefault();
+      var i = items.indexOf(item);
+      items[stepIndex(key, i, items.length)].focus();
+      return;
+    }
+    var nested = item.parentElement && item.parentElement.matches('.ds-nested-menu-item') && item.matches('[aria-haspopup]') ? item.parentElement : null;
+    if (nested && (key === 'ArrowRight' || key === 'Enter' || key === ' ')) {
+      e.preventDefault();
+      nestedOpen(nested, true);
+      return;
+    }
+    if (key === 'ArrowLeft' && menu.matches('.ds-nested-menu')) {
+      e.preventDefault();
+      nestedClose(menu.parentElement, true);
+    }
+  });
+
+  // Tabbing out of an open popup closes it
+  doc.addEventListener('focusout', function (e) {
+    if (!e.relatedTarget) return;
+    popOpenWrappers().forEach(function (w) {
+      if (w.contains(e.target) && !w.contains(e.relatedTarget)) popClose(w);
+    });
+  });
+
+  window.addEventListener('resize', function () {
+    popOpenWrappers().forEach(function (w) {
+      var cfg = popCfgOf(w);
+      var p = popParts(cfg, w);
+      if (p.panel) popPlace(w, p.panel);
+    });
+  });
+
+  /* ---------- date picker ----------
+     .ds-date-picker > .ds-date-picker-field (button.ds-date-picker-open-button + input.ds-date-picker-input)
+                     + div.ds-date-picker-popper[role=dialog] (empty: ds.js builds the calendar)
+     Value format MM/DD/YYYY (KEP / MUI default). Optional data-min / data-max (YYYY-MM-DD) on the wrapper.
+     Typing a date and leaving the field (or Enter) also sets it.
+     Fires ds-change on .ds-date-picker: { value: 'YYYY-MM-DD' (or ''), label: 'MM/DD/YYYY' }.
+     Calendar keyboard: arrows move a day / week, PageUp / PageDown a month, Home / End the week,
+     Enter / Space pick, Escape closes. */
+
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  var WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function isoOf(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function usOf(d) { return pad2(d.getMonth() + 1) + '/' + pad2(d.getDate()) + '/' + d.getFullYear(); }
+  function sameDay(a, b) { return a && b && isoOf(a) === isoOf(b); }
+  function parseIso(s) {
+    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s || '');
+    if (!m) return null;
+    var d = new Date(+m[1], +m[2] - 1, +m[3]);
+    return d.getMonth() === +m[2] - 1 ? d : null;
+  }
+  function parseUs(s) {
+    var m = /^\s*(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})\s*$/.exec(s || '');
+    if (!m) return parseIso((s || '').trim());
+    var d = new Date(+m[3], +m[1] - 1, +m[2]);
+    return d.getMonth() === +m[1] - 1 ? d : null;
+  }
+
+  function dpParts(w) {
+    return {
+      input: w.querySelector('.ds-date-picker-input'),
+      button: w.querySelector('.ds-date-picker-open-button'),
+      popper: w.querySelector('.ds-date-picker-popper')
+    };
+  }
+  function dpLimits(w) { return { min: parseIso(w.getAttribute('data-min')), max: parseIso(w.getAttribute('data-max')) }; }
+  function dpAllowed(w, d) {
+    var l = dpLimits(w);
+    return !(l.min && isoOf(d) < isoOf(l.min)) && !(l.max && isoOf(d) > isoOf(l.max));
+  }
+
+  function dpOpen(w) {
+    var p = dpParts(w);
+    var picked = parseUs(p.input && p.input.value);
+    w._dsFocusDate = picked || (function () { var t = new Date(); t.setHours(0, 0, 0, 0); return t; })();
+    if (!dpAllowed(w, w._dsFocusDate)) { var l = dpLimits(w); w._dsFocusDate = new Date((l.min || l.max).getTime()); }
+    p.popper.setAttribute('role', 'dialog');
+    if (!p.popper.hasAttribute('aria-label')) p.popper.setAttribute('aria-label', 'Choose date');
+    dpRender(w);
+  }
+
+  function dpFocus(w) {
+    var day = w.querySelector('.ds-date-picker-day[tabindex="0"]');
+    if (day) day.focus();
+  }
+
+  function dpRender(w) {
+    var p = dpParts(w);
+    var f = w._dsFocusDate;
+    var picked = parseUs(p.input && p.input.value);
+    var today = new Date();
+    var first = new Date(f.getFullYear(), f.getMonth(), 1);
+    var days = new Date(f.getFullYear(), f.getMonth() + 1, 0).getDate();
+    var l = dpLimits(w);
+    var prevOk = !l.min || isoOf(new Date(f.getFullYear(), f.getMonth(), 0)) >= isoOf(l.min);
+    var nextOk = !l.max || isoOf(new Date(f.getFullYear(), f.getMonth() + 1, 1)) <= isoOf(l.max);
+    var html = '<div class="ds-date-picker-header">' +
+      '<span class="ds-date-picker-month-label" aria-live="polite">' + MONTHS[f.getMonth()] + ' ' + f.getFullYear() + '</span>' +
+      '<button type="button" class="ds-date-picker-nav" data-step="-1" aria-label="Previous month"' + (prevOk ? '' : ' disabled') + '><ds-icon name="chevron-left" size="24"></ds-icon></button>' +
+      '<button type="button" class="ds-date-picker-nav" data-step="1" aria-label="Next month"' + (nextOk ? '' : ' disabled') + '><ds-icon name="chevron-right" size="24"></ds-icon></button>' +
+      '</div><div class="ds-date-picker-calendar" role="grid" aria-label="' + MONTHS[f.getMonth()] + ' ' + f.getFullYear() + '">';
+    WEEKDAYS.forEach(function (d, i) { html += '<span class="ds-date-picker-weekday" role="columnheader" aria-label="' + WEEKDAY_NAMES[i] + '">' + d + '</span>'; });
+    for (var i = 0; i < first.getDay(); i++) html += '<span class="ds-date-picker-day ds-date-picker-day-outside" aria-hidden="true"></span>';
+    for (var n = 1; n <= days; n++) {
+      var d = new Date(f.getFullYear(), f.getMonth(), n);
+      var cls = 'ds-date-picker-day' + (sameDay(d, today) ? ' ds-date-picker-day-today' : '');
+      html += '<button type="button" role="gridcell" class="' + cls + '" data-date="' + isoOf(d) + '"' +
+        ' tabindex="' + (sameDay(d, f) ? '0' : '-1') + '"' +
+        ' aria-selected="' + (sameDay(d, picked) ? 'true' : 'false') + '"' +
+        (sameDay(d, today) ? ' aria-current="date"' : '') +
+        ' aria-label="' + WEEKDAY_NAMES[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + n + ', ' + d.getFullYear() + '"' +
+        (dpAllowed(w, d) ? '' : ' disabled') + '>' + n + '</button>';
+    }
+    html += '</div>';
+    p.popper.innerHTML = html;
+  }
+
+  function dpMove(w, d) {
+    if (!dpAllowed(w, d)) return;
+    w._dsFocusDate = d;
+    dpRender(w);
+    var el = w.querySelector('.ds-date-picker-day[tabindex="0"]');
+    if (el) el.focus();
+  }
+
+  function dpSet(w, d, fromInput) {
+    var p = dpParts(w);
+    var old = w._dsValue;
+    var value = d ? isoOf(d) : '';
+    if (p.input) p.input.value = d ? usOf(d) : (fromInput ? p.input.value : '');
+    w._dsValue = value;
+    if (value !== old) emit(w, 'ds-change', { value: value, label: d ? usOf(d) : '' });
+  }
+
+  doc.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t.closest) return;
+    var nav = t.closest('.ds-date-picker-nav');
+    if (nav) {
+      var w = nav.closest('.ds-date-picker');
+      var f = w._dsFocusDate;
+      var d = new Date(f.getFullYear(), f.getMonth() + Number(nav.getAttribute('data-step')), 1);
+      var lim = dpLimits(w);
+      if (lim.min && isoOf(d) < isoOf(lim.min)) d = new Date(lim.min.getTime());
+      if (lim.max && isoOf(d) > isoOf(lim.max)) d = new Date(lim.max.getTime());
+      w._dsFocusDate = d;
+      dpRender(w);
+      var again = w.querySelector('.ds-date-picker-nav[data-step="' + nav.getAttribute('data-step') + '"]');
+      if (again && !again.disabled) again.focus();
+      else { var day = w.querySelector('.ds-date-picker-day[tabindex="0"]'); if (day) day.focus(); }
+      return;
+    }
+    var dayBtn = t.closest('.ds-date-picker-day[data-date]');
+    if (dayBtn && !dayBtn.disabled) {
+      var dw = dayBtn.closest('.ds-date-picker');
+      dpSet(dw, parseIso(dayBtn.getAttribute('data-date')));
+      popClose(dw, true);
+    }
+  });
+
+  doc.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (!t.matches) return;
+    if (t.matches('.ds-date-picker-input')) {
+      if (e.key === 'Enter') { e.preventDefault(); dpCommitInput(t); }
+      else if (e.key === 'ArrowDown' && e.altKey) { e.preventDefault(); popOpen(t.closest('.ds-date-picker')); }
+      return;
+    }
+    if (!t.matches('.ds-date-picker-day[data-date]')) return;
+    var w = t.closest('.ds-date-picker');
+    var f = w._dsFocusDate;
+    var k = e.key;
+    var d = null;
+    if (k === 'ArrowLeft') d = new Date(f.getFullYear(), f.getMonth(), f.getDate() - 1);
+    else if (k === 'ArrowRight') d = new Date(f.getFullYear(), f.getMonth(), f.getDate() + 1);
+    else if (k === 'ArrowUp') d = new Date(f.getFullYear(), f.getMonth(), f.getDate() - 7);
+    else if (k === 'ArrowDown') d = new Date(f.getFullYear(), f.getMonth(), f.getDate() + 7);
+    else if (k === 'Home') d = new Date(f.getFullYear(), f.getMonth(), f.getDate() - f.getDay());
+    else if (k === 'End') d = new Date(f.getFullYear(), f.getMonth(), f.getDate() + 6 - f.getDay());
+    else if (k === 'PageUp' || k === 'PageDown') {
+      var step = k === 'PageUp' ? -1 : 1;
+      var last = new Date(f.getFullYear(), f.getMonth() + step + 1, 0).getDate();
+      d = new Date(f.getFullYear(), f.getMonth() + step, Math.min(f.getDate(), last));
+    }
+    if (d) { e.preventDefault(); dpMove(w, d); }
+  });
+
+  function dpCommitInput(input) {
+    var w = input.closest('.ds-date-picker');
+    var v = input.value.trim();
+    if (v === '') { dpSet(w, null); return; }
+    var d = parseUs(v);
+    if (d && dpAllowed(w, d)) dpSet(w, d);
+  }
+
+  doc.addEventListener('change', function (e) {
+    if (e.target.matches && e.target.matches('.ds-date-picker-input')) dpCommitInput(e.target);
+  });
+
+  /* ---------- time picker ----------
+     .ds-time-picker > .ds-time-picker-field (button.ds-time-picker-open-button + input.ds-time-picker-input)
+                     + div.ds-time-picker-popper[role=dialog] (empty: ds.js builds the lists)
+     Like KEP's TimePicker on desktop: three lists of menu items (hours, minutes, AM/PM) and an OK
+     button. data-minutes-step (default 5) and data-ampm="false" (24-hour lists) on the wrapper.
+     Value shown as "hh:mm AM" (or "HH:mm"); typing a time also sets it.
+     Fires ds-change on .ds-time-picker: { value: 'HH:mm' (24h, or ''), label: what the field shows }.
+     Keyboard: Up / Down move in a list (and pick), Left / Right switch list, Enter closes, Escape closes. */
+
+  function tpAmPm(w) { return w.getAttribute('data-ampm') !== 'false'; }
+  function tpParse(s) {
+    var m = /^\s*(\d{1,2})(?::(\d{1,2}))?\s*([ap])?\.?\s*m?\.?\s*$/i.exec(s || '');
+    if (!m) return null;
+    var h = +m[1], min = m[2] ? +m[2] : 0, ap = m[3] ? m[3].toLowerCase() : null;
+    if (min > 59) return null;
+    if (ap) { if (h < 1 || h > 12) return null; h = (h % 12) + (ap === 'p' ? 12 : 0); }
+    else if (h > 23) return null;
+    return { h: h, m: min };
+  }
+  function tpLabel(w, t) {
+    if (!t) return '';
+    if (!tpAmPm(w)) return pad2(t.h) + ':' + pad2(t.m);
+    var h12 = t.h % 12 === 0 ? 12 : t.h % 12;
+    return pad2(h12) + ':' + pad2(t.m) + ' ' + (t.h < 12 ? 'AM' : 'PM');
+  }
+  function tpParts(w) {
+    return {
+      input: w.querySelector('.ds-time-picker-input'),
+      button: w.querySelector('.ds-time-picker-open-button'),
+      popper: w.querySelector('.ds-time-picker-popper')
+    };
+  }
+
+  function tpOpen(w) {
+    var p = tpParts(w);
+    var t = tpParse(p.input && p.input.value);
+    w._dsTime = t;
+    var ampm = tpAmPm(w);
+    var step = Math.max(1, parseInt(w.getAttribute('data-minutes-step'), 10) || 5);
+    p.popper.setAttribute('role', 'dialog');
+    if (!p.popper.hasAttribute('aria-label')) p.popper.setAttribute('aria-label', 'Choose time');
+    function item(sec, val, text, sel) {
+      return '<button type="button" class="ds-select-item ds-time-picker-item" role="option" tabindex="-1" data-section="' + sec +
+        '" data-value="' + val + '" aria-selected="' + (sel ? 'true' : 'false') + '"><span class="ds-select-item-label">' + text + '</span></button>';
+    }
+    var hours = '', mins = '', mer = '';
+    if (ampm) {
+      for (var h = 1; h <= 12; h++) hours += item('hours', h, pad2(h), t && (t.h % 12 === 0 ? 12 : t.h % 12) === h);
+      mer = item('meridiem', 'AM', 'AM', t && t.h < 12) + item('meridiem', 'PM', 'PM', t && t.h >= 12);
+    } else {
+      for (var h2 = 0; h2 < 24; h2++) hours += item('hours', h2, pad2(h2), t && t.h === h2);
+    }
+    for (var m = 0; m < 60; m += step) mins += item('minutes', m, pad2(m), t && t.m === m);
+    p.popper.innerHTML = '<div class="ds-time-picker-sections">' +
+      '<div class="ds-time-picker-section" role="listbox" aria-label="Hours">' + hours + '</div>' +
+      '<div class="ds-time-picker-section" role="listbox" aria-label="Minutes">' + mins + '</div>' +
+      (ampm ? '<div class="ds-time-picker-section" role="listbox" aria-label="AM or PM">' + mer + '</div>' : '') +
+      '</div><div class="ds-time-picker-actions"><button type="button" class="ds-btn ds-btn-sm ds-btn-secondary ds-btn-borderless ds-time-picker-ok">OK</button></div>';
+    toArray(p.popper.querySelectorAll('.ds-time-picker-section')).forEach(function (sec) {
+      var sel = sec.querySelector('[aria-selected="true"]') || sec.querySelector('.ds-time-picker-item');
+      sel.tabIndex = 0;
+    });
+  }
+
+  function tpFocus(w) {
+    toArray(w.querySelectorAll('.ds-time-picker-section')).forEach(function (sec) {
+      var sel = sec.querySelector('[tabindex="0"]');
+      if (sel) sec.scrollTop = sel.offsetTop - sec.offsetTop - sec.clientHeight / 2 + sel.offsetHeight / 2;
+    });
+    var first = w.querySelector('.ds-time-picker-item[tabindex="0"]');
+    if (first) first.focus({ preventScroll: true });
+  }
+
+  function tpPick(item) {
+    var w = item.closest('.ds-time-picker');
+    var sec = item.getAttribute('data-section');
+    var t = w._dsTime ? { h: w._dsTime.h, m: w._dsTime.m } : { h: tpAmPm(w) ? 0 : 0, m: 0 };
+    var v = item.getAttribute('data-value');
+    var pm = t.h >= 12;
+    if (sec === 'hours') t.h = tpAmPm(w) ? (+v % 12) + (pm ? 12 : 0) : +v;
+    else if (sec === 'minutes') t.m = +v;
+    else t.h = (t.h % 12) + (v === 'PM' ? 12 : 0);
+    toArray(item.parentElement.children).forEach(function (o) {
+      o.setAttribute('aria-selected', o === item ? 'true' : 'false');
+      o.tabIndex = o === item ? 0 : -1;
+    });
+    // the other lists show the time they now stand for
+    if (!w._dsTime) {
+      toArray(w.querySelectorAll('.ds-time-picker-section')).forEach(function (s) {
+        if (s === item.parentElement || s.querySelector('[aria-selected="true"]')) return;
+        var first = s.querySelector('.ds-time-picker-item');
+        first.setAttribute('aria-selected', 'true');
+        first.tabIndex = 0;
+      });
+    }
+    tpSet(w, t);
+  }
+
+  function tpSet(w, t) {
+    var p = tpParts(w);
+    w._dsTime = t;
+    var label = tpLabel(w, t);
+    if (p.input) p.input.value = label;
+    var value = t ? pad2(t.h) + ':' + pad2(t.m) : '';
+    if (value !== w._dsValue) {
+      w._dsValue = value;
+      emit(w, 'ds-change', { value: value, label: label });
+    }
+  }
+
+  doc.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t.closest) return;
+    var item = t.closest('.ds-time-picker-item');
+    if (item) { tpPick(item); item.focus(); return; }
+    var ok = t.closest('.ds-time-picker-ok');
+    if (ok) popClose(ok.closest('.ds-time-picker'), true);
+  });
+
+  doc.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (!t.matches) return;
+    if (t.matches('.ds-time-picker-input')) {
+      if (e.key === 'Enter') { e.preventDefault(); tpCommitInput(t); }
+      else if (e.key === 'ArrowDown' && e.altKey) { e.preventDefault(); popOpen(t.closest('.ds-time-picker')); }
+      return;
+    }
+    if (!t.matches('.ds-time-picker-item')) return;
+    var k = e.key;
+    var sec = t.parentElement;
+    if (k === 'ArrowDown' || k === 'ArrowUp' || k === 'Home' || k === 'End') {
+      e.preventDefault();
+      var items = toArray(sec.children);
+      var next = items[stepIndex(k, items.indexOf(t), items.length)];
+      tpPick(next);
+      next.focus();
+      next.scrollIntoView({ block: 'nearest' });
+    } else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+      e.preventDefault();
+      var secs = toArray(t.closest('.ds-time-picker-sections').children);
+      var to = secs[stepIndex(k, secs.indexOf(sec), secs.length)];
+      var focus = to.querySelector('[tabindex="0"]') || to.firstElementChild;
+      focus.focus();
+    } else if (k === 'Enter') {
+      e.preventDefault();
+      if (t.getAttribute('aria-selected') !== 'true') tpPick(t);
+      popClose(t.closest('.ds-time-picker'), true);
+    }
+  });
+
+  function tpCommitInput(input) {
+    var w = input.closest('.ds-time-picker');
+    var v = input.value.trim();
+    if (v === '') { tpSet(w, null); return; }
+    var t = tpParse(v);
+    if (t) tpSet(w, t);
+  }
+
+  doc.addEventListener('change', function (e) {
+    if (e.target.matches && e.target.matches('.ds-time-picker-input')) tpCommitInput(e.target);
+  });
+
+  // remember the starting value, so ds-change fires only on a real change
+  doc.addEventListener('focusin', function (e) {
+    var t = e.target;
+    if (!t.closest) return;
+    var dw = t.closest('.ds-date-picker');
+    if (dw && dw._dsValue === undefined) {
+      var d = parseUs((dw.querySelector('.ds-date-picker-input') || {}).value);
+      dw._dsValue = d ? isoOf(d) : '';
+    }
+    var tw = t.closest('.ds-time-picker');
+    if (tw && tw._dsValue === undefined) {
+      var tt = tpParse((tw.querySelector('.ds-time-picker-input') || {}).value);
+      tw._dsValue = tt ? pad2(tt.h) + ':' + pad2(tt.m) : '';
+    }
+  });
+
+  /* ---------- tooltip ----------
+     .ds-tooltip-trigger > (trigger element) + .ds-tooltip.ds-tooltip-top|bottom|left|right (CSS shows it on
+     hover after a short delay, and on keyboard focus). Like KEP UI Tooltip, ds.js:
+     - flips it to the other side when it has no room (top <-> bottom, place-left <-> place-right);
+     - hides it on Escape until the pointer or focus leaves;
+     - links it to the trigger for screen readers (role="tooltip", aria-describedby). */
+  var ttCount = 0;
+  var TT_SWAP = { 'ds-tooltip-top': 'ds-tooltip-bottom', 'ds-tooltip-bottom': 'ds-tooltip-top',
+    'ds-tooltip-place-left': 'ds-tooltip-place-right', 'ds-tooltip-place-right': 'ds-tooltip-place-left',
+    'ds-tooltip-left': 'ds-tooltip-right', 'ds-tooltip-right': 'ds-tooltip-left' };
+
+  function ttSwap(tip) {
+    var horizontal = tip.classList.contains('ds-tooltip-place-left') || tip.classList.contains('ds-tooltip-place-right');
+    var names = horizontal ? ['ds-tooltip-place-left', 'ds-tooltip-place-right', 'ds-tooltip-left', 'ds-tooltip-right']
+                           : ['ds-tooltip-top', 'ds-tooltip-bottom'];
+    var swap = names.filter(function (n) { return tip.classList.contains(n); });
+    swap.forEach(function (n) { tip.classList.remove(n); });
+    swap.forEach(function (n) { tip.classList.add(TT_SWAP[n]); });
+    tip.classList.toggle('ds-tooltip-flipped');
+  }
+
+  function ttPrepare(trigger) {
+    var tip = toArray(trigger.children).filter(function (c) { return c.matches('.ds-tooltip'); })[0];
+    if (!tip) return;
+    trigger.classList.remove('ds-tooltip-dismissed');
+    if (!tip.id) { ttCount += 1; tip.id = 'ds-tooltip-' + ttCount; }
+    tip.setAttribute('role', 'tooltip');
+    var target = toArray(trigger.children).filter(function (c) { return c !== tip; })[0];
+    var focusable = target && (target.matches(FOCUSABLE) ? target : target.querySelector(FOCUSABLE));
+    if (focusable && !focusable.hasAttribute('aria-describedby') && !focusable.hasAttribute('aria-label')) {
+      focusable.setAttribute('aria-describedby', tip.id);
+    }
+    // put it back on its own side, then flip if it does not fit there but fits on the other
+    if (tip.classList.contains('ds-tooltip-flipped')) ttSwap(tip);
+    var r = tip.getBoundingClientRect();
+    var out = r.top < 0 || r.bottom > window.innerHeight || r.left < 0 || r.right > window.innerWidth;
+    if (!out) return;
+    ttSwap(tip);
+    var r2 = tip.getBoundingClientRect();
+    var out2 = r2.top < 0 || r2.bottom > window.innerHeight || r2.left < 0 || r2.right > window.innerWidth;
+    if (out2) ttSwap(tip); // no better on the other side either: keep the one the page asked for
+  }
+
+  doc.addEventListener('mouseover', function (e) {
+    var trig = e.target.closest ? e.target.closest('.ds-tooltip-trigger') : null;
+    if (!trig || (e.relatedTarget && trig.contains(e.relatedTarget))) return;
+    ttPrepare(trig);
+  });
+  doc.addEventListener('focusin', function (e) {
+    var trig = e.target.closest ? e.target.closest('.ds-tooltip-trigger') : null;
+    if (trig) ttPrepare(trig);
+  });
+  doc.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    toArray(doc.querySelectorAll('.ds-tooltip-trigger:hover, .ds-tooltip-trigger:focus-within')).forEach(function (t) {
+      t.classList.add('ds-tooltip-dismissed');
+    });
+  });
+
+  /* ---------- pagination (generated) ----------
+     <div class="ds-table-pagination" data-count="11" data-page="6"></div> and ds.js renders the page
+     buttons like KEP UI Pagination (MUI): data-sibling-count (default 1), data-boundary-count (default 1),
+     data-show-first-button, data-show-last-button, data-hide-prev-button, data-hide-next-button.
+     Clicking re-renders; ds-change on the bar: { value: <page>, label: '<page>' }.
+     Static markup (no data-count) keeps working as before. */
+  var PG = '.ds-table-pagination[data-count]';
+
+  function pgRange(a, b) { var r = []; for (var i = a; i <= b; i++) r.push(i); return r; }
+
+  function pgItems(count, page, sib, bound) {
+    var start = pgRange(1, Math.min(bound, count));
+    var end = pgRange(Math.max(count - bound + 1, bound + 1), count);
+    var sStart = Math.max(Math.min(page - sib, count - bound - sib * 2 - 1), bound + 2);
+    var sEnd = Math.min(Math.max(page + sib, bound + sib * 2 + 2), end.length ? end[0] - 2 : count - 1);
+    var items = start.slice();
+    if (sStart > bound + 2) items.push('...');
+    else if (bound + 1 < count - bound) items.push(bound + 1);
+    items = items.concat(pgRange(sStart, sEnd));
+    if (sEnd < count - bound - 1) items.push('...');
+    else if (count - bound > bound) items.push(count - bound);
+    return items.concat(end);
+  }
+
+  function pgRender(bar) {
+    var count = Math.max(1, parseInt(bar.getAttribute('data-count'), 10) || 1);
+    var page = Math.min(count, Math.max(1, parseInt(bar.getAttribute('data-page'), 10) || 1));
+    var sib = parseInt(bar.getAttribute('data-sibling-count'), 10); if (isNaN(sib)) sib = 1;
+    var bound = parseInt(bar.getAttribute('data-boundary-count'), 10); if (isNaN(bound)) bound = 1;
+    function btn(to, label, icon, cls, disabled) {
+      return '<button type="button" class="ds-table-page' + (cls ? ' ' + cls : '') + '" data-page="' + to + '" aria-label="' + label + '"' +
+        (disabled ? ' disabled' : '') + '><ds-icon name="' + icon + '" size="16"></ds-icon></button>';
+    }
+    var html = '';
+    if (bar.hasAttribute('data-show-first-button')) html += btn(1, 'Go to first page', 'double-chevron-down', 'ds-table-page-first', page === 1);
+    if (!bar.hasAttribute('data-hide-prev-button')) html += btn(page - 1, 'Go to previous page', 'chevron-left', '', page === 1);
+    pgItems(count, page, sib, bound).forEach(function (it) {
+      if (it === '...') html += '<span class="ds-table-page-ellipsis" aria-hidden="true">...</span>';
+      else html += '<button type="button" class="ds-table-page" data-page="' + it + '"' +
+        (it === page ? ' aria-current="page" aria-label="page ' + it + '"' : ' aria-label="Go to page ' + it + '"') + '>' + it + '</button>';
+    });
+    if (!bar.hasAttribute('data-hide-next-button')) html += btn(page + 1, 'Go to next page', 'chevron-right', '', page === count);
+    if (bar.hasAttribute('data-show-last-button')) html += btn(count, 'Go to last page', 'double-chevron-down', 'ds-table-page-last', page === count);
+    bar.innerHTML = html;
+    bar.setAttribute('data-page', String(page));
+    if (!bar.getAttribute('role')) bar.setAttribute('role', 'navigation');
+    if (!bar.hasAttribute('aria-label')) bar.setAttribute('aria-label', 'pagination');
+  }
+
+  function pgRenderAll() { toArray(doc.querySelectorAll(PG)).forEach(pgRender); }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', pgRenderAll);
+  else pgRenderAll();
+  if (window.MutationObserver) {
+    new MutationObserver(function (records) {
+      records.forEach(function (r) {
+        toArray(r.addedNodes).forEach(function (n) {
+          if (n.nodeType !== 1) return;
+          if (n.matches(PG)) pgRender(n);
+          toArray(n.querySelectorAll(PG)).forEach(pgRender);
+        });
+      });
+    }).observe(doc.documentElement, { childList: true, subtree: true });
+  }
+
+  doc.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest(PG + ' .ds-table-page[data-page]') : null;
+    if (!b || b.disabled) return;
+    var bar = b.closest(PG);
+    var to = b.getAttribute('data-page');
+    if (to === bar.getAttribute('data-page')) return;
+    var cls = b.classList.contains('ds-table-page-first') ? '.ds-table-page-first'
+      : b.classList.contains('ds-table-page-last') ? '.ds-table-page-last'
+      : /previous/i.test(b.getAttribute('aria-label') || '') ? '[aria-label="Go to previous page"]'
+      : /next page/i.test(b.getAttribute('aria-label') || '') ? '[aria-label="Go to next page"]' : null;
+    bar.setAttribute('data-page', to);
+    pgRender(bar);
+    // keep keyboard focus on the same control
+    var again = cls ? bar.querySelector(cls) : bar.querySelector('[aria-current="page"]');
+    if (again && !again.disabled) again.focus();
+    else { var cur = bar.querySelector('[aria-current="page"]'); if (cur) cur.focus(); }
+    emit(bar, 'ds-change', { value: Number(to), label: to });
+  });
+
+  /* ---------- rich text ----------
+     .ds-rich-text > .ds-rich-text-toolbar[role=toolbar] > button.ds-rich-text-action[data-action] ...
+                   + .ds-rich-text-editor[contenteditable="true"][data-placeholder]
+     data-action: bold | italic | underline | ordered-list | bullet-list | align-left | align-center | align-right
+     (KEP Richtext actions). Buttons show aria-pressed for the formatting at the caret.
+     Read only: add ds-rich-text-read-only and contenteditable="false" (ds.js disables the toolbar).
+     Fires ds-change on .ds-rich-text as the text changes: { value: <html>, label: <plain text> }.
+     Keyboard: Ctrl/Cmd+B / I / U in the text; Left / Right move between toolbar buttons. */
+  var RT_COMMANDS = {
+    'bold': 'bold', 'italic': 'italic', 'underline': 'underline',
+    'ordered-list': 'insertOrderedList', 'bullet-list': 'insertUnorderedList',
+    'align-left': 'justifyLeft', 'align-center': 'justifyCenter', 'align-right': 'justifyRight'
+  };
+
+  function rtSync(w) {
+    var editor = w.querySelector('.ds-rich-text-editor');
+    var readOnly = w.classList.contains('ds-rich-text-read-only');
+    var sel = doc.getSelection();
+    var inside = editor && sel && sel.rangeCount && editor.contains(sel.anchorNode);
+    toArray(w.querySelectorAll('.ds-rich-text-action[data-action]')).forEach(function (b) {
+      b.disabled = readOnly;
+      var cmd = RT_COMMANDS[b.getAttribute('data-action')];
+      var on = false;
+      if (inside && cmd) { try { on = doc.queryCommandState(cmd); } catch (err) { on = false; } }
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function rtEmit(w) {
+    var editor = w.querySelector('.ds-rich-text-editor');
+    if (!editor) return;
+    // an emptied editor keeps a stray <br>: clear it so the placeholder shows
+    if (textOf(editor) === '' && !editor.querySelector('li, img')) editor.innerHTML = '';
+    emit(w, 'ds-change', { value: editor.innerHTML, label: (editor.innerText || '').trim() });
+  }
+
+  // keep the text selection while clicking toolbar buttons
+  doc.addEventListener('mousedown', function (e) {
+    if (e.target.closest && e.target.closest('.ds-rich-text-action')) e.preventDefault();
+  });
+
+  doc.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.ds-rich-text-action[data-action]') : null;
+    if (!b || b.disabled) return;
+    var w = b.closest('.ds-rich-text');
+    var editor = w.querySelector('.ds-rich-text-editor');
+    var cmd = RT_COMMANDS[b.getAttribute('data-action')];
+    if (!editor || !cmd) return;
+    var sel = doc.getSelection();
+    if (!(sel && sel.rangeCount && editor.contains(sel.anchorNode))) {
+      editor.focus();
+      var r = doc.createRange();
+      r.selectNodeContents(editor);
+      r.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+    doc.execCommand(cmd, false, null);
+    if (e.detail !== 0) editor.focus();
+    rtSync(w);
+    rtEmit(w);
+  });
+
+  doc.addEventListener('input', function (e) {
+    var editor = e.target.closest ? e.target.closest('.ds-rich-text-editor') : null;
+    if (editor) rtEmit(editor.closest('.ds-rich-text'));
+  });
+
+  doc.addEventListener('selectionchange', function () {
+    var sel = doc.getSelection();
+    var node = sel && sel.anchorNode;
+    var el = node && (node.nodeType === 1 ? node : node.parentElement);
+    var w = el && el.closest ? el.closest('.ds-rich-text') : null;
+    if (w) rtSync(w);
+  });
+
+  doc.addEventListener('keydown', function (e) {
+    var b = e.target.closest ? e.target.closest('.ds-rich-text-action') : null;
+    if (!b || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End')) return;
+    var bar = b.closest('.ds-rich-text-toolbar');
+    var items = toArray(bar.querySelectorAll('.ds-rich-text-action')).filter(function (x) { return !x.disabled; });
+    e.preventDefault();
+    items[stepIndex(e.key, items.indexOf(b), items.length)].focus();
+  });
+
+  function rtSyncAll() { toArray(doc.querySelectorAll('.ds-rich-text')).forEach(rtSync); }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', rtSyncAll);
+  else rtSyncAll();
+
+  /* ---------- content modal: Escape closes it ----------
+     Registered last, so an open select, menu, popover, picker or autocomplete inside the
+     modal closes first (they call preventDefault on the Escape they use). */
+  doc.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    var top = topModal();
+    if (top && top.el.classList.contains('ds-modal-variant-content')) {
+      e.preventDefault();
+      closeModal(top.el, 'escape');
+    }
+  });
+
   /* ---------- public API ---------- */
 
   window.DS = {
-    version: '1.3.0',
+    version: '1.4.0',
     setTheme: setTheme,
     getTheme: getTheme,
     showToast: showToast,
